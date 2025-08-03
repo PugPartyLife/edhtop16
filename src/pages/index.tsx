@@ -25,6 +25,7 @@ import {
   usePaginationFragment,
   usePreloadedQuery,
 } from 'react-relay/hooks';
+import { useCommanderPreferences } from '#src/lib/client/cookies';
 import {ColorIdentity} from '../assets/icons/colors';
 import {Card} from '../components/card';
 import {ColorSelection} from '../components/color_selection';
@@ -35,7 +36,6 @@ import {NumberInputDropdown} from '../components/number_input_dropdown';
 import {Dropdown} from '../components/dropdown';
 import {Select} from '../components/select';
 import {formatPercent} from '../lib/client/format';
-import { useCommanderPreferences } from '../lib/client/cookies';
 
 // Add debounce function
 function debounce<T extends (...args: any[]) => any>(
@@ -173,7 +173,7 @@ function CommandersPageShell({
 
   const {replaceRoute} = useNavigation();
   const [display, toggleDisplay] = useCommandersDisplay();
-  const {updatePreference} = useCommanderPreferences();
+  const {preferences, updatePreference} = useCommanderPreferences();
 
   const [localMinEntries, setLocalMinEntries] = useState(
     minEntries?.toString() || '',
@@ -250,10 +250,9 @@ function CommandersPageShell({
   }, [updatePreference, replaceRoute]);
 
   const handleDisplayToggle = useCallback(() => {
-    const newDisplay = display === 'table' ? 'card' : 'table';
+    const newDisplay = preferences.display === 'table' ? 'card' : 'table';
     updatePreference('display', newDisplay);
-    toggleDisplay();
-  }, [display, updatePreference, toggleDisplay]);
+  }, [preferences.display, updatePreference]);
 
   const handleEventSizeChange = useCallback(
     (value: string) => {
@@ -265,6 +264,7 @@ function CommandersPageShell({
 
   const handleEventSizeSelect = useCallback(
     (value: number | null) => {
+      updatePreference('minTournamentSize', value);
       const stringValue = value?.toString() || '';
       setLocalEventSize(stringValue);
       setOpenDropdown(null);
@@ -293,6 +293,7 @@ function CommandersPageShell({
 
   const handleMinEntriesSelect = useCallback(
     (value: number | null) => {
+      updatePreference('minEntries', value);
       const stringValue = value?.toString() || '';
       setLocalMinEntries(stringValue);
       setOpenDropdown(null);

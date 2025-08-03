@@ -214,7 +214,13 @@ builder.queryField('commanders', (t) =>
       sortBy: t.arg({type: CommandersSortBy, defaultValue: 'CONVERSION'}),
       colorId: t.arg.string(),
     },
-    resolve: async (_root, args) => {
+    resolve: async (_root, args, context) => {
+      const minEntries = args.minEntries ?? context.commanderPreferences.minEntries;
+      const minTournamentSize = args.minTournamentSize ?? context.commanderPreferences.minTournamentSize;
+      const timePeriod = args.timePeriod ?? (context.commanderPreferences.timePeriod as any);
+      const sortBy = args.sortBy ?? (context.commanderPreferences.sortBy as any);
+      const colorId = args.colorId ?? context.commanderPreferences.colorId;
+
       return resolveCursorConnection(
         {args, toCursor: (parent) => `${parent.id}`},
         async ({
@@ -223,13 +229,13 @@ builder.queryField('commanders', (t) =>
           limit,
           inverted,
         }: ResolveCursorConnectionArgs) => {
-          const minDate = minDateFromTimePeriod(args.timePeriod ?? 'ONE_MONTH');
-          const minTournamentSize = args.minTournamentSize || 0;
-          const minEntries = args.minEntries || 0;
-          const sortBy =
-            args.sortBy === 'POPULARITY'
+          const minDate = minDateFromTimePeriod(timePeriod ?? 'ONE_MONTH');
+          const minTournamentSizeValue = minTournamentSize || 0;
+          const minEntriesValue = minEntries || 0;
+          const sortByField =
+            sortBy === 'POPULARITY'
               ? 'stats.count'
-              : args.sortBy === 'TOP_CUTS'
+              : sortBy === 'TOP_CUTS'
                 ? 'stats.topCuts'
                 : 'stats.conversionRate';
 
@@ -240,7 +246,7 @@ builder.queryField('commanders', (t) =>
                 .leftJoin('Entry', 'Entry.commanderId', 'Commander.id')
                 .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
                 .where('Tournament.tournamentDate', '>=', minDate.toISOString())
-                .where('Tournament.size', '>=', minTournamentSize)
+                .where('Tournament.size', '>=', minTournamentSizeValue)
                 .groupBy('Commander.id')
                 .select((eb) => [
                   eb.ref('Commander.id').as('commanderId'),
@@ -285,21 +291,21 @@ builder.queryField('commanders', (t) =>
             .leftJoin('stats', 'stats.commanderId', 'Commander.id')
             .where('Commander.name', '!=', 'Unknown Commander')
             .where('Commander.name', '!=', 'Nadu, Winged Wisdom')
-            .where('stats.count', '>=', minEntries);
+            .where('stats.count', '>=', minEntriesValue);
 
-          if (args.colorId) {
-            query = query.where('Commander.colorId', '=', args.colorId);
+          if (colorId) {
+            query = query.where('Commander.colorId', '=', colorId);
           }
 
           if (before) {
             query = query.where((eb) =>
               eb(
-                eb.tuple(eb.ref(sortBy), eb.ref('Commander.id')),
+                eb.tuple(eb.ref(sortByField), eb.ref('Commander.id')),
                 '>',
                 eb.tuple(
                   eb
                     .selectFrom('stats')
-                    .select(sortBy)
+                    .select(sortByField)
                     .where('commanderId', '=', Number(after)),
                   Number(after),
                 ),
@@ -310,12 +316,12 @@ builder.queryField('commanders', (t) =>
           if (after) {
             query = query.where((eb) =>
               eb(
-                eb.tuple(eb.ref(sortBy), eb.ref('Commander.id')),
+                eb.tuple(eb.ref(sortByField), eb.ref('Commander.id')),
                 '<',
                 eb.tuple(
                   eb
                     .selectFrom('stats')
-                    .select(sortBy)
+                    .select(sortByField)
                     .where('commanderId', '=', Number(after)),
                   Number(after),
                 ),
@@ -324,7 +330,7 @@ builder.queryField('commanders', (t) =>
           }
 
           query = query
-            .orderBy(sortBy, inverted ? 'asc' : 'desc')
+            .orderBy(sortByField, inverted ? 'asc' : 'desc')
             .orderBy('Commander.id', inverted ? 'asc' : 'desc')
             .limit(limit);
 
