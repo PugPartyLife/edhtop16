@@ -1,5 +1,5 @@
 import {Environment, Network, RecordSource, Store} from 'relay-runtime';
-import type { CommanderPreferences } from './cookies';
+import type {CommanderPreferences} from './cookies';
 
 let relayCommanderPreferences: CommanderPreferences = {};
 
@@ -9,7 +9,7 @@ export function createClientNetwork() {
     console.log('🚀 Operation:', params.name);
     console.log('🚀 Variables:', variables);
     console.log('🚀 Preferences being sent:', relayCommanderPreferences);
-    
+
     const requestBody = {
       query: params.text,
       id: params.id,
@@ -18,7 +18,7 @@ export function createClientNetwork() {
         commanderPreferences: relayCommanderPreferences,
       },
     };
-    
+
     const response = await fetch('/api/graphql', {
       method: 'POST',
       credentials: 'include',
@@ -30,13 +30,13 @@ export function createClientNetwork() {
 
     const json = await response.text();
     const parsed = JSON.parse(json);
-    
+
     console.log('🚀 Response received:', {
       commanderCount: parsed?.data?.commanders?.edges?.length,
       firstCommander: parsed?.data?.commanders?.edges?.[0]?.node?.name,
     });
     console.log('🚀 === END REQUEST ===');
-    
+
     return parsed;
   });
 }
@@ -58,8 +58,11 @@ export function getClientEnvironment() {
 
 export function updateRelayPreferences(prefs: CommanderPreferences) {
   console.log('📡 updateRelayPreferences called with:', prefs);
-  relayCommanderPreferences = { ...prefs };
-  console.log('📡 Updated relayCommanderPreferences to:', relayCommanderPreferences);
+  relayCommanderPreferences = {...prefs};
+  console.log(
+    '📡 Updated relayCommanderPreferences to:',
+    relayCommanderPreferences,
+  );
 }
 
 export function getRelayPreferences(): CommanderPreferences {

@@ -21,14 +21,14 @@ import type {CommanderPreferences} from './lib/client/cookies';
 function parseCookies(cookieHeader: string): Record<string, string> {
   const cookies: Record<string, string> = {};
   if (!cookieHeader) return cookies;
-  
-  cookieHeader.split(';').forEach(cookie => {
+
+  cookieHeader.split(';').forEach((cookie) => {
     const [name, value] = cookie.trim().split('=');
     if (name && value) {
       cookies[name] = decodeURIComponent(value);
     }
   });
-  
+
   return cookies;
 }
 
@@ -49,22 +49,22 @@ export function createHandler(
         getPersistedOperation: (key) => persistedQueries[key] ?? null,
       }),
     ],
-    context: async ({ request }) => {
+    context: async ({request}) => {
       const req = request as any;
       const res = request as any;
-      
+
       let commanderPreferences: CommanderPreferences = {};
-      
+
       try {
         const body = await request.clone().text();
         const parsed = JSON.parse(body);
-        
+
         if (parsed.extensions?.commanderPreferences) {
           commanderPreferences = parsed.extensions.commanderPreferences;
         } else {
           const cookies = parseCookies(req.headers.cookie || '');
           const cookiePrefs = cookies.commanderPreferences;
-          
+
           if (cookiePrefs) {
             commanderPreferences = JSON.parse(cookiePrefs);
           }
@@ -76,9 +76,9 @@ export function createHandler(
       const setCommanderPreferences = (prefs: CommanderPreferences) => {
         const expires = new Date();
         expires.setTime(expires.getTime() + 365 * 24 * 60 * 60 * 1000);
-        
+
         res.setHeader('Set-Cookie', [
-          `commanderPreferences=${encodeURIComponent(JSON.stringify(prefs))}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`
+          `commanderPreferences=${encodeURIComponent(JSON.stringify(prefs))}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`,
         ]);
       };
 
@@ -92,29 +92,36 @@ export function createHandler(
 
   const entryPointHandler: express.Handler = async (req, res) => {
     const head = createHead();
-  
-  // Parse preferences for SSR (same logic as GraphQL context)
-  let commanderPreferences: CommanderPreferences = {};
-  try {
-    const cookies = parseCookies(req.headers.cookie || '');
-    const cookiePrefs = cookies.commanderPreferences;
-    
-    if (cookiePrefs) {
-      commanderPreferences = JSON.parse(cookiePrefs);
-      console.log('🍪 SSR: Found preferences in cookies:', commanderPreferences);
-    } else {
-      console.log('❌ SSR: No preferences found in cookies');
-    }
-  } catch (error) {
-    console.warn('❌ SSR: Failed to parse preferences:', error);
-  }
 
-  const env = createServerEnvironment(schema, persistedQueries, commanderPreferences);
-  
-  const RiverApp = await createRiverServerApp(
-    {getEnvironment: () => env},
-    req.originalUrl,
-  );
+    // Parse preferences for SSR (same logic as GraphQL context)
+    let commanderPreferences: CommanderPreferences = {};
+    try {
+      const cookies = parseCookies(req.headers.cookie || '');
+      const cookiePrefs = cookies.commanderPreferences;
+
+      if (cookiePrefs) {
+        commanderPreferences = JSON.parse(cookiePrefs);
+        console.log(
+          '🍪 SSR: Found preferences in cookies:',
+          commanderPreferences,
+        );
+      } else {
+        console.log('❌ SSR: No preferences found in cookies');
+      }
+    } catch (error) {
+      console.warn('❌ SSR: Failed to parse preferences:', error);
+    }
+
+    const env = createServerEnvironment(
+      schema,
+      persistedQueries,
+      commanderPreferences,
+    );
+
+    const RiverApp = await createRiverServerApp(
+      {getEnvironment: () => env},
+      req.originalUrl,
+    );
 
     function evaluateRiverDirective(match: string, directive: string) {
       switch (directive) {

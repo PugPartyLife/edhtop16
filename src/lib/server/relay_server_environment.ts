@@ -24,7 +24,7 @@ export function createServerEnvironment(
       throw new Error(`Could not find source for query: ${request.id}`);
     }
 
-    const contextValue = commanderPreferences 
+    const contextValue = commanderPreferences
       ? {
           topdeckClient: new (await import('./topdeck')).TopdeckClient(),
           commanderPreferences,

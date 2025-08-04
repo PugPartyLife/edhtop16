@@ -2,8 +2,7 @@ import SchemaBuilder from '@pothos/core';
 import DataloaderPlugin from '@pothos/plugin-dataloader';
 import RelayPlugin from '@pothos/plugin-relay';
 import {TopdeckClient} from '../topdeck';
-import { CommanderPreferences } from '#src/lib/client/cookies.js';
-
+import {CommanderPreferences} from '#src/lib/client/cookies.js';
 
 export interface Context {
   topdeckClient: TopdeckClient;

@@ -215,12 +215,18 @@ builder.queryField('commanders', (t) =>
       colorId: t.arg.string(),
     },
     resolve: async (_root, args, context) => {
-      const sortBy = context.commanderPreferences.sortBy ?? args.sortBy ?? 'CONVERSION';
-      const timePeriod = (context.commanderPreferences.timePeriod ?? args.timePeriod ?? 'ONE_MONTH') as TimePeriodType;
-      const minEntries = context.commanderPreferences.minEntries ?? args.minEntries ?? 0;
-      const minTournamentSize = context.commanderPreferences.minTournamentSize ?? args.minTournamentSize ?? 0;
+      const sortBy =
+        context.commanderPreferences.sortBy ?? args.sortBy ?? 'CONVERSION';
+      const timePeriod = (context.commanderPreferences.timePeriod ??
+        args.timePeriod ??
+        'ONE_MONTH') as TimePeriodType;
+      const minEntries =
+        context.commanderPreferences.minEntries ?? args.minEntries ?? 0;
+      const minTournamentSize =
+        context.commanderPreferences.minTournamentSize ??
+        args.minTournamentSize ??
+        0;
       const colorId = context.commanderPreferences.colorId ?? args.colorId;
-
 
       console.log('⚙️ Commander resolver - final values:', {
         sortBy,
@@ -228,11 +234,10 @@ builder.queryField('commanders', (t) =>
         minEntries,
         minTournamentSize,
         colorId,
-        fromArgs: { sortBy: args.sortBy, timePeriod: args.timePeriod },
+        fromArgs: {sortBy: args.sortBy, timePeriod: args.timePeriod},
         fromContext: context.commanderPreferences,
-        finalUsed: { sortBy, timePeriod, minEntries, minTournamentSize, colorId }
+        finalUsed: {sortBy, timePeriod, minEntries, minTournamentSize, colorId},
       });
-
 
       return resolveCursorConnection(
         {args, toCursor: (parent) => `${parent.id}`},

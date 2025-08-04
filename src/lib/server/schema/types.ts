@@ -17,7 +17,13 @@ export const TimePeriod = builder.enumType('TimePeriod', {
   ] as const,
 });
 
-export type TimePeriodType = 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'ALL_TIME' | 'POST_BAN';
+export type TimePeriodType =
+  | 'ONE_MONTH'
+  | 'THREE_MONTHS'
+  | 'SIX_MONTHS'
+  | 'ONE_YEAR'
+  | 'ALL_TIME'
+  | 'POST_BAN';
 
 export function minDateFromTimePeriod(
   timePeriod: TimePeriodType | string | null | undefined,
