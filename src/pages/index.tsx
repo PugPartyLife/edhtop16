@@ -42,7 +42,6 @@ import {Dropdown} from '../components/dropdown';
 import {Select} from '../components/select';
 import {formatPercent} from '../lib/client/format';
 
-// Add debounce function
 function debounce<T extends (...args: any[]) => any>(
   func: T,
   delay: number,

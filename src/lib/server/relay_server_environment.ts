@@ -24,7 +24,6 @@ export function createServerEnvironment(
       throw new Error(`Could not find source for query: ${request.id}`);
     }
 
-    // Use createContext but pass the preferences
     const contextValue = createContext(commanderPreferences);
 
     console.log('🏗️ SSR GraphQL: Executing with context preferences:', contextValue.commanderPreferences);
