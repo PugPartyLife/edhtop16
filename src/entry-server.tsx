@@ -16,6 +16,7 @@ import {createServerEnvironment} from './lib/server/relay_server_environment';
 import {schema} from './lib/server/schema';
 import {TopdeckClient} from './lib/server/topdeck';
 import {App} from './pages/_app';
+import {createContext} from './lib/server/context';
 import type {CommanderPreferences} from './lib/client/cookies';
 
 function parseCookies(cookieHeader: string): Record<string, string> {
@@ -40,7 +41,6 @@ export function createHandler(
   const graphqlHandler = createYoga({
     schema,
     plugins: [
-      // eslint-disable-next-line react-hooks/rules-of-hooks
       usePersistedOperations({
         allowArbitraryOperations: true,
         extractPersistedOperationId: (
@@ -49,74 +49,53 @@ export function createHandler(
         getPersistedOperation: (key) => persistedQueries[key] ?? null,
       }),
     ],
-    context: async ({request}) => {
-      const req = request as any;
-      const res = request as any;
-
+    context: async ({ request }) => {
       let commanderPreferences: CommanderPreferences = {};
-
+      
       try {
+        // Parse preferences from extensions or cookies
         const body = await request.clone().text();
         const parsed = JSON.parse(body);
-
+        
         if (parsed.extensions?.commanderPreferences) {
+          console.log('🎯 GraphQL Context: Using preferences from extensions:', parsed.extensions.commanderPreferences);
           commanderPreferences = parsed.extensions.commanderPreferences;
         } else {
-          const cookies = parseCookies(req.headers.cookie || '');
+          const cookieHeader = request.headers.get('cookie') || '';
+          const cookies = parseCookies(cookieHeader);
           const cookiePrefs = cookies.commanderPreferences;
-
+          
           if (cookiePrefs) {
-            commanderPreferences = JSON.parse(cookiePrefs);
+            commanderPreferences = JSON.parse(decodeURIComponent(cookiePrefs));
+            console.log('🎯 GraphQL Context: Using preferences from cookies:', commanderPreferences);
           }
         }
       } catch (error) {
-        console.warn('Failed to parse commander preferences:', error);
+        console.warn('❌ GraphQL Context: Failed to parse preferences:', error);
       }
 
-      const setCommanderPreferences = (prefs: CommanderPreferences) => {
-        const expires = new Date();
-        expires.setTime(expires.getTime() + 365 * 24 * 60 * 60 * 1000);
-
-        res.setHeader('Set-Cookie', [
-          `commanderPreferences=${encodeURIComponent(JSON.stringify(prefs))}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`,
-        ]);
-      };
-
-      return {
-        topdeckClient: new TopdeckClient(),
-        commanderPreferences,
-        setCommanderPreferences,
-      };
+      // Use createContext consistently
+      return createContext(commanderPreferences);
     },
   });
 
   const entryPointHandler: express.Handler = async (req, res) => {
     const head = createHead();
 
-    // Parse preferences for SSR (same logic as GraphQL context)
     let commanderPreferences: CommanderPreferences = {};
     try {
       const cookies = parseCookies(req.headers.cookie || '');
       const cookiePrefs = cookies.commanderPreferences;
-
+      
       if (cookiePrefs) {
-        commanderPreferences = JSON.parse(cookiePrefs);
-        console.log(
-          '🍪 SSR: Found preferences in cookies:',
-          commanderPreferences,
-        );
-      } else {
-        console.log('❌ SSR: No preferences found in cookies');
+        commanderPreferences = JSON.parse(decodeURIComponent(cookiePrefs));
+        console.log('🏗️ SSR: Using preferences from cookies:', commanderPreferences);
       }
     } catch (error) {
-      console.warn('❌ SSR: Failed to parse preferences:', error);
+      console.warn('❌ SSR: Failed to parse preferences from cookies:', error);
     }
 
-    const env = createServerEnvironment(
-      schema,
-      persistedQueries,
-      commanderPreferences,
-    );
+    const env = createServerEnvironment(schema, persistedQueries, commanderPreferences);
 
     const RiverApp = await createRiverServerApp(
       {getEnvironment: () => env},
