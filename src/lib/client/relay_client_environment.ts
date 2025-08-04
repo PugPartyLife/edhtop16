@@ -57,12 +57,12 @@ export function getClientEnvironment() {
 }
 
 export function updateRelayPreferences(prefs: CommanderPreferences) {
-  console.log('📡 updateRelayPreferences called with:', prefs);
+  //console.log('📡 updateRelayPreferences called with:', prefs);
   relayCommanderPreferences = {...prefs};
-  console.log(
-    '📡 Updated relayCommanderPreferences to:',
-    relayCommanderPreferences,
-  );
+  //console.log(
+  //  '📡 Updated relayCommanderPreferences to:',
+  //  relayCommanderPreferences,
+  //);
 }
 
 export function getRelayPreferences(): CommanderPreferences {
