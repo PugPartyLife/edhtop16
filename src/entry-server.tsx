@@ -14,6 +14,7 @@ import {RelayEnvironmentProvider} from 'react-relay/hooks';
 import type {Manifest} from 'vite';
 import {createServerEnvironment} from './lib/server/relay_server_environment';
 import {schema} from './lib/server/schema';
+import {TopdeckClient} from './lib/server/topdeck';
 import {App} from './pages/_app';
 import type {CommanderPreferences} from './lib/client/cookies';
 
@@ -81,7 +82,8 @@ export function createHandler(
         ]);
       };
 
-      return {  // Add context properties as we have more
+      return {
+        topdeckClient: new TopdeckClient(),
         commanderPreferences,
         setCommanderPreferences,
       };
@@ -90,11 +92,29 @@ export function createHandler(
 
   const entryPointHandler: express.Handler = async (req, res) => {
     const head = createHead();
-    const env = createServerEnvironment(schema, persistedQueries);
-    const RiverApp = await createRiverServerApp(
-      {getEnvironment: () => env},
-      req.originalUrl,
-    );
+  
+  // Parse preferences for SSR (same logic as GraphQL context)
+  let commanderPreferences: CommanderPreferences = {};
+  try {
+    const cookies = parseCookies(req.headers.cookie || '');
+    const cookiePrefs = cookies.commanderPreferences;
+    
+    if (cookiePrefs) {
+      commanderPreferences = JSON.parse(cookiePrefs);
+      console.log('🍪 SSR: Found preferences in cookies:', commanderPreferences);
+    } else {
+      console.log('❌ SSR: No preferences found in cookies');
+    }
+  } catch (error) {
+    console.warn('❌ SSR: Failed to parse preferences:', error);
+  }
+
+  const env = createServerEnvironment(schema, persistedQueries, commanderPreferences);
+  
+  const RiverApp = await createRiverServerApp(
+    {getEnvironment: () => env},
+    req.originalUrl,
+  );
 
     function evaluateRiverDirective(match: string, directive: string) {
       switch (directive) {

@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<190447da53b4571a9dc9b647b80b1295>>
- * @relayHash ef0a133118f34e37785e33f95b5ec8ad
+ * @generated SignedSource<<a2b3560e99391bae45ad5d4d95a51b5d>>
+ * @relayHash 68a82b959b1d98f76f1677e2fab658dd
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,18 +9,15 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID ef0a133118f34e37785e33f95b5ec8ad
+// @relayRequestID 68a82b959b1d98f76f1677e2fab658dd
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type CommandersSortBy = "CONVERSION" | "POPULARITY" | "TOP_CUTS" | "%future added value";
 export type TimePeriod = "ALL_TIME" | "ONE_MONTH" | "ONE_YEAR" | "POST_BAN" | "SIX_MONTHS" | "THREE_MONTHS" | "%future added value";
 export type pages_CommandersQuery$variables = {
-  colorId?: string | null | undefined;
-  minEntries?: number | null | undefined;
-  minTournamentSize?: number | null | undefined;
-  sortBy: CommandersSortBy;
-  timePeriod: TimePeriod;
+  sortBy?: CommandersSortBy | null | undefined;
+  timePeriod?: TimePeriod | null | undefined;
 };
 export type pages_CommandersQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"pages_topCommanders">;
@@ -31,65 +28,38 @@ export type pages_CommandersQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "colorId"
-},
+var v0 = [
+  {
+    "defaultValue": "CONVERSION",
+    "kind": "LocalArgument",
+    "name": "sortBy"
+  },
+  {
+    "defaultValue": "ONE_MONTH",
+    "kind": "LocalArgument",
+    "name": "timePeriod"
+  }
+],
 v1 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "minEntries"
+  "kind": "Variable",
+  "name": "sortBy",
+  "variableName": "sortBy"
 },
 v2 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "minTournamentSize"
-},
-v3 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "sortBy"
-},
-v4 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "timePeriod"
-},
-v5 = {
   "kind": "Variable",
   "name": "timePeriod",
   "variableName": "timePeriod"
 },
-v6 = [
-  {
-    "kind": "Variable",
-    "name": "colorId",
-    "variableName": "colorId"
-  },
+v3 = [
   {
     "kind": "Literal",
     "name": "first",
     "value": 48
   },
-  {
-    "kind": "Variable",
-    "name": "minEntries",
-    "variableName": "minEntries"
-  },
-  {
-    "kind": "Variable",
-    "name": "minTournamentSize",
-    "variableName": "minTournamentSize"
-  },
-  {
-    "kind": "Variable",
-    "name": "sortBy",
-    "variableName": "sortBy"
-  },
-  (v5/*: any*/)
+  (v1/*: any*/),
+  (v2/*: any*/)
 ],
-v7 = {
+v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -98,19 +68,16 @@ v7 = {
 };
 return {
   "fragment": {
-    "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/)
-    ],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "pages_CommandersQuery",
     "selections": [
       {
-        "args": null,
+        "args": [
+          (v1/*: any*/),
+          (v2/*: any*/)
+        ],
         "kind": "FragmentSpread",
         "name": "pages_topCommanders"
       }
@@ -120,19 +87,13 @@ return {
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": [
-      (v4/*: any*/),
-      (v3/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v0/*: any*/)
-    ],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "pages_CommandersQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v6/*: any*/),
+        "args": (v3/*: any*/),
         "concreteType": "QueryCommandersConnection",
         "kind": "LinkedField",
         "name": "commanders",
@@ -154,7 +115,7 @@ return {
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v7/*: any*/),
+                  (v4/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -178,20 +139,7 @@ return {
                   },
                   {
                     "alias": null,
-                    "args": [
-                      {
-                        "fields": [
-                          {
-                            "kind": "Variable",
-                            "name": "minSize",
-                            "variableName": "minTournamentSize"
-                          },
-                          (v5/*: any*/)
-                        ],
-                        "kind": "ObjectValue",
-                        "name": "filters"
-                      }
-                    ],
+                    "args": null,
                     "concreteType": "CommanderStats",
                     "kind": "LinkedField",
                     "name": "stats",
@@ -250,7 +198,7 @@ return {
                         "name": "imageUrls",
                         "storageKey": null
                       },
-                      (v7/*: any*/)
+                      (v4/*: any*/)
                     ],
                     "storageKey": null
                   },
@@ -304,13 +252,10 @@ return {
       },
       {
         "alias": null,
-        "args": (v6/*: any*/),
+        "args": (v3/*: any*/),
         "filters": [
-          "timePeriod",
           "sortBy",
-          "colorId",
-          "minEntries",
-          "minTournamentSize"
+          "timePeriod"
         ],
         "handle": "connection",
         "key": "pages__commanders",
@@ -320,7 +265,7 @@ return {
     ]
   },
   "params": {
-    "id": "ef0a133118f34e37785e33f95b5ec8ad",
+    "id": "68a82b959b1d98f76f1677e2fab658dd",
     "metadata": {},
     "name": "pages_CommandersQuery",
     "operationKind": "query",
@@ -329,7 +274,7 @@ return {
 };
 })();
 
-(node as any).hash = "88f91c0f1581e4e62cd36c5ca782ba48";
+(node as any).hash = "aeeda10eeddc11c391a02afbf67fd392";
 
 import { PreloadableQueryRegistry } from 'relay-runtime';
 PreloadableQueryRegistry.set(node.params.id, node);

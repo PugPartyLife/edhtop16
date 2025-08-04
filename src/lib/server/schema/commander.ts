@@ -11,7 +11,7 @@ import {builder} from './builder';
 import {Card} from './card';
 import {Entry} from './entry';
 import {FirstPartyPromoRef, getActivePromotions} from './promo';
-import {minDateFromTimePeriod, TimePeriod} from './types';
+import {minDateFromTimePeriod, TimePeriod, type TimePeriodType} from './types';
 
 const CommandersSortBy = builder.enumType('CommandersSortBy', {
   values: ['POPULARITY', 'CONVERSION', 'TOP_CUTS'] as const,
@@ -215,11 +215,24 @@ builder.queryField('commanders', (t) =>
       colorId: t.arg.string(),
     },
     resolve: async (_root, args, context) => {
-      const minEntries = args.minEntries ?? context.commanderPreferences.minEntries;
-      const minTournamentSize = args.minTournamentSize ?? context.commanderPreferences.minTournamentSize;
-      const timePeriod = args.timePeriod ?? (context.commanderPreferences.timePeriod as any);
-      const sortBy = args.sortBy ?? (context.commanderPreferences.sortBy as any);
-      const colorId = args.colorId ?? context.commanderPreferences.colorId;
+      const sortBy = context.commanderPreferences.sortBy ?? args.sortBy ?? 'CONVERSION';
+      const timePeriod = (context.commanderPreferences.timePeriod ?? args.timePeriod ?? 'ONE_MONTH') as TimePeriodType;
+      const minEntries = context.commanderPreferences.minEntries ?? args.minEntries ?? 0;
+      const minTournamentSize = context.commanderPreferences.minTournamentSize ?? args.minTournamentSize ?? 0;
+      const colorId = context.commanderPreferences.colorId ?? args.colorId;
+
+
+      console.log('⚙️ Commander resolver - final values:', {
+        sortBy,
+        timePeriod,
+        minEntries,
+        minTournamentSize,
+        colorId,
+        fromArgs: { sortBy: args.sortBy, timePeriod: args.timePeriod },
+        fromContext: context.commanderPreferences,
+        finalUsed: { sortBy, timePeriod, minEntries, minTournamentSize, colorId }
+      });
+
 
       return resolveCursorConnection(
         {args, toCursor: (parent) => `${parent.id}`},
@@ -229,7 +242,7 @@ builder.queryField('commanders', (t) =>
           limit,
           inverted,
         }: ResolveCursorConnectionArgs) => {
-          const minDate = minDateFromTimePeriod(timePeriod ?? 'ONE_MONTH');
+          const minDate = minDateFromTimePeriod(timePeriod);
           const minTournamentSizeValue = minTournamentSize || 0;
           const minEntriesValue = minEntries || 0;
           const sortByField =

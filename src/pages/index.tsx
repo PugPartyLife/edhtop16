@@ -1,7 +1,7 @@
 import {
-  CommandersSortBy,
   pages_CommandersQuery,
-  TimePeriod,
+  CommandersSortBy,
+  TimePeriod
 } from '#genfiles/queries/pages_CommandersQuery.graphql';
 import {pages_topCommanders$key} from '#genfiles/queries/pages_topCommanders.graphql';
 import {pages_TopCommandersCard$key} from '#genfiles/queries/pages_TopCommandersCard.graphql';
@@ -17,6 +17,7 @@ import {
   useMemo,
   useState,
   useEffect,
+  useRef
 } from 'react';
 import {
   EntryPointComponent,
@@ -25,7 +26,7 @@ import {
   usePaginationFragment,
   usePreloadedQuery,
 } from 'react-relay/hooks';
-import { useCommanderPreferences } from '#src/lib/client/cookies';
+import { useCommanderPreferences, setRefetchCallback, clearRefetchCallback } from '#src/lib/client/cookies';
 import {ColorIdentity} from '../assets/icons/colors';
 import {Card} from '../components/card';
 import {ColorSelection} from '../components/color_selection';
@@ -64,7 +65,7 @@ function TopCommandersCard({
         name
         colorId
         breakdownUrl
-        stats(filters: {timePeriod: $timePeriod, minSize: $minTournamentSize}) {
+        stats {
           conversionRate
           topCuts
           count
@@ -184,6 +185,12 @@ function CommandersPageShell({
       : '',
   );
 
+  const currentSortBy = preferences.sortBy || sortBy;
+  const currentTimePeriod = preferences.timePeriod || timePeriod;
+  const currentColorId = preferences.colorId || colorId;
+  const currentMinEntries = preferences.minEntries || minEntries;
+  const currentMinTournamentSize = preferences.minTournamentSize || minTournamentSize;
+
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   useEffect(() => {
@@ -201,53 +208,49 @@ function CommandersPageShell({
   const debouncedMinEntriesUpdate = useCallback(
     debounce((value: string) => {
       if (value === '') {
-        replaceRoute('/', {
-          minEntries: null,
-        });
+        updatePreference('minEntries', null);
       } else {
         const numValue = parseInt(value, 10);
         if (!isNaN(numValue) && numValue >= 1) {
-          replaceRoute('/', {
-            minEntries: numValue,
-          });
+          updatePreference('minEntries', numValue);
         }
       }
     }, 300),
-    [replaceRoute],
+    [updatePreference],
   );
 
   const debouncedEventSizeUpdate = useCallback(
     debounce((value: string) => {
       if (value === '') {
-        replaceRoute('/', {
-          minSize: null,
-        });
+        updatePreference('minTournamentSize', null);
       } else {
         const numValue = parseInt(value, 10);
         if (!isNaN(numValue) && numValue >= 1) {
-          replaceRoute('/', {
-            minSize: numValue,
-          });
+          updatePreference('minTournamentSize', numValue);
         }
       }
     }, 300),
-    [replaceRoute],
+    [updatePreference],
   );
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === 'Go') {
+      (e.target as HTMLInputElement).blur();
+      setOpenDropdown(null);
+    }
+  }, []);
 
   const handleColorChange = useCallback((value: string | null) => {
     updatePreference('colorId', value);
-    replaceRoute('/', {colorId: value || null});
-  }, [updatePreference, replaceRoute]);
+  }, [updatePreference]);
 
   const handleSortByChange = useCallback((value: CommandersSortBy) => {
     updatePreference('sortBy', value);
-    replaceRoute('/', {sortBy: value});
-  }, [updatePreference, replaceRoute]);
+  }, [updatePreference]);
 
   const handleTimePeriodChange = useCallback((value: TimePeriod) => {
     updatePreference('timePeriod', value);
-    replaceRoute('/', {timePeriod: value});
-  }, [updatePreference, replaceRoute]);
+  }, [updatePreference]);
 
   const handleDisplayToggle = useCallback(() => {
     const newDisplay = preferences.display === 'table' ? 'card' : 'table';
@@ -264,24 +267,13 @@ function CommandersPageShell({
 
   const handleEventSizeSelect = useCallback(
     (value: number | null) => {
-      updatePreference('minTournamentSize', value);
       const stringValue = value?.toString() || '';
       setLocalEventSize(stringValue);
       setOpenDropdown(null);
       updatePreference('minTournamentSize', value);
-      replaceRoute('/', {
-        minSize: value,
-      });
     },
-    [replaceRoute, updatePreference],
+    [updatePreference],
   );
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === 'Go') {
-      (e.target as HTMLInputElement).blur();
-      setOpenDropdown(null);
-    }
-  }, []);
 
   const handleMinEntriesChange = useCallback(
     (value: string) => {
@@ -293,16 +285,12 @@ function CommandersPageShell({
 
   const handleMinEntriesSelect = useCallback(
     (value: number | null) => {
-      updatePreference('minEntries', value);
       const stringValue = value?.toString() || '';
       setLocalMinEntries(stringValue);
       setOpenDropdown(null);
       updatePreference('minEntries', value);
-      replaceRoute('/', {
-        minEntries: value,
-      });
     },
-    [replaceRoute, updatePreference],
+    [updatePreference],
   );
 
   return (
@@ -338,7 +326,7 @@ function CommandersPageShell({
                 id="commanders-sort-by"
                 label="Sort By"
                 value={
-                  sortBy === 'POPULARITY' ? 'Most Popular' : 'Top Performing'
+                  currentSortBy === 'POPULARITY' ? 'Most Popular' : 'Top Performing'
                 }
                 options={[
                   {
@@ -359,15 +347,15 @@ function CommandersPageShell({
                 id="commanders-time-period"
                 label="Time Period"
                 value={
-                  timePeriod === 'ONE_MONTH'
+                  currentTimePeriod === 'ONE_MONTH'
                     ? '1 Month'
-                    : timePeriod === 'THREE_MONTHS'
+                    : currentTimePeriod === 'THREE_MONTHS'
                       ? '3 Months'
-                      : timePeriod === 'SIX_MONTHS'
+                      : currentTimePeriod === 'SIX_MONTHS'
                         ? '6 Months'
-                        : timePeriod === 'ONE_YEAR'
+                        : currentTimePeriod === 'ONE_YEAR'
                           ? '1 Year'
-                          : timePeriod === 'ALL_TIME'
+                          : currentTimePeriod === 'ALL_TIME'
                             ? 'All Time'
                             : 'Post Ban'
                 }
@@ -405,22 +393,22 @@ function CommandersPageShell({
 
             <div className="relative flex flex-col">
               <NumberInputDropdown
-                id="commanders-event-size"
-                label="Event Size"
-                value={localEventSize || ''}
-                placeholder="Event Size"
-                min="1"
-                dropdownClassName="event-size-dropdown"
-                options={[
-                  {value: null, label: 'All Tournaments'},
-                  {value: 30, label: '30+ - Medium Events'},
-                  {value: 60, label: '60+ - Large Events'},
-                  {value: 100, label: '100+ - Major Events'},
-                ]}
-                onChange={handleEventSizeChange}
-                onSelect={handleEventSizeSelect}
-                onKeyDown={handleKeyDown}
-              />
+              id="commanders-event-size"
+              label="Event Size"
+              value={localEventSize || ''}
+              placeholder="Event Size"
+              min="1"
+              dropdownClassName="event-size-dropdown"
+              options={[
+                {value: null, label: 'All Tournaments'},
+                {value: 30, label: '30+ - Medium Events'},
+                {value: 60, label: '60+ - Large Events'},
+                {value: 100, label: '100+ - Major Events'},
+              ]}
+              onChange={handleEventSizeChange}
+              onSelect={handleEventSizeSelect}
+              onKeyDown={handleKeyDown}
+            />
             </div>
           </div>
         </div>
@@ -452,21 +440,19 @@ export const CommandersPage: EntryPointComponent<
   const query = usePreloadedQuery(
     graphql`
       query pages_CommandersQuery(
-        $timePeriod: TimePeriod!
-        $sortBy: CommandersSortBy!
-        $minEntries: Int
-        $minTournamentSize: Int
-        $colorId: String
+           $sortBy: CommandersSortBy = CONVERSION
+           $timePeriod: TimePeriod = ONE_MONTH
       ) @preloadable {
-        ...pages_topCommanders
+        ...pages_topCommanders @arguments(sortBy: $sortBy, timePeriod: $timePeriod)
       }
     `,
     queries.commandersQueryRef,
   );
 
   const [display] = useCommandersDisplay();
+  const {preferences}= useCommanderPreferences();
 
-  const {data, loadNext, isLoadingNext, hasNext} = usePaginationFragment<
+  const {data, loadNext, isLoadingNext, hasNext, refetch} = usePaginationFragment<
     TopCommandersQuery,
     pages_topCommanders$key
   >(
@@ -475,16 +461,15 @@ export const CommandersPage: EntryPointComponent<
       @argumentDefinitions(
         cursor: {type: "String"}
         count: {type: "Int", defaultValue: 48}
+        sortBy: {type: "CommandersSortBy", defaultValue: CONVERSION}
+        timePeriod: {type: "TimePeriod", defaultValue: ONE_MONTH}
       )
       @refetchable(queryName: "TopCommandersQuery") {
         commanders(
           first: $count
           after: $cursor
-          timePeriod: $timePeriod
           sortBy: $sortBy
-          colorId: $colorId
-          minEntries: $minEntries
-          minTournamentSize: $minTournamentSize
+          timePeriod: $timePeriod
         ) @connection(key: "pages__commanders") {
           edges {
             node {
@@ -498,13 +483,45 @@ export const CommandersPage: EntryPointComponent<
     query,
   );
 
+  useEffect(() => {
+    console.log('🔄 Setting up refetch callback');
+    
+    setRefetchCallback(() => {
+      console.log('🔄 REFETCH TRIGGERED FROM CALLBACK');
+      console.log('🔄 Current preferences at refetch time:', preferences);
+      
+      refetch({
+        count: 48,
+        cursor: null,
+      }, {
+        fetchPolicy: 'network-only',
+      });
+    });
+    
+    return () => {
+      console.log('🔄 Cleaning up refetch callback');
+      clearRefetchCallback();
+    };
+  }, [refetch, preferences]);
+
+  useEffect(() => {
+    console.log('📊 === DATA CHANGED ===');
+    console.log('📊 Commander count:', data?.commanders?.edges?.length);
+    console.log('📊 Full data structure:', data);
+    console.log('📊 First edge:', data?.commanders?.edges?.[0]);
+    console.log('📊 First node:', data?.commanders?.edges?.[0]?.node);
+    console.log('📊 Available node fields:', Object.keys(data?.commanders?.edges?.[0]?.node || {}));
+    console.log('📊 Timestamp:', new Date().toISOString());
+    console.log('📊 === END DATA CHANGE ===');
+  }, [data]);
+
   return (
     <CommandersPageShell
-      sortBy={queries.commandersQueryRef.variables.sortBy}
-      timePeriod={queries.commandersQueryRef.variables.timePeriod}
-      colorId={queries.commandersQueryRef.variables.colorId || ''}
-      minEntries={queries.commandersQueryRef.variables.minEntries}
-      minTournamentSize={queries.commandersQueryRef.variables.minTournamentSize}
+      sortBy={preferences.sortBy as CommandersSortBy || 'CONVERSION'}
+      timePeriod={preferences.timePeriod as TimePeriod || 'ONE_MONTH'}
+      colorId={preferences.colorId || ''}
+      minEntries={preferences.minEntries || null}
+      minTournamentSize={preferences.minTournamentSize || null}
     >
       <div
         className={cn(
@@ -531,8 +548,8 @@ export const CommandersPage: EntryPointComponent<
             display={display}
             commander={node}
             secondaryStatistic={
-              queries.commandersQueryRef.variables.sortBy === 'CONVERSION' ||
-              queries.commandersQueryRef.variables.sortBy === 'TOP_CUTS'
+              preferences.sortBy === 'CONVERSION' ||
+              preferences.sortBy === 'TOP_CUTS'
                 ? 'topCuts'
                 : 'count'
             }

@@ -7,10 +7,12 @@ import {
   Store,
 } from 'relay-runtime';
 import {createContext} from './context';
+import type {CommanderPreferences} from '../client/cookies';
 
 export function createServerEnvironment(
   schema: GraphQLSchema,
   persistedQueries?: Record<string, string>,
+  commanderPreferences?: CommanderPreferences,
 ) {
   const networkFetchFunction: FetchFunction = async (request, variables) => {
     let source = request.text;
@@ -22,11 +24,19 @@ export function createServerEnvironment(
       throw new Error(`Could not find source for query: ${request.id}`);
     }
 
+    const contextValue = commanderPreferences 
+      ? {
+          topdeckClient: new (await import('./topdeck')).TopdeckClient(),
+          commanderPreferences,
+          setCommanderPreferences: () => {},
+        }
+      : createContext();
+
     const results = await graphql({
       schema,
       source,
       variableValues: variables,
-      contextValue: createContext(),
+      contextValue,
     });
 
     return results as any;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8025ca27a67c92cca8bea428fe66fba5>>
+ * @generated SignedSource<<63d8a7b8eafc2b1de79e96973c4db333>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -32,16 +32,7 @@ export type pages_TopCommandersCard$key = {
 };
 
 const node: ReaderFragment = {
-  "argumentDefinitions": [
-    {
-      "kind": "RootArgument",
-      "name": "minTournamentSize"
-    },
-    {
-      "kind": "RootArgument",
-      "name": "timePeriod"
-    }
-  ],
+  "argumentDefinitions": [],
   "kind": "Fragment",
   "metadata": null,
   "name": "pages_TopCommandersCard",
@@ -69,24 +60,7 @@ const node: ReaderFragment = {
     },
     {
       "alias": null,
-      "args": [
-        {
-          "fields": [
-            {
-              "kind": "Variable",
-              "name": "minSize",
-              "variableName": "minTournamentSize"
-            },
-            {
-              "kind": "Variable",
-              "name": "timePeriod",
-              "variableName": "timePeriod"
-            }
-          ],
-          "kind": "ObjectValue",
-          "name": "filters"
-        }
-      ],
+      "args": null,
       "concreteType": "CommanderStats",
       "kind": "LinkedField",
       "name": "stats",
@@ -153,6 +127,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "ba7df95fa5f07795c0293ba5b167f637";
+(node as any).hash = "f332473336687aea48884775f8de9ff2";
 
 export default node;

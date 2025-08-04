@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2329427560741b613a6e6193a698c614>>
+ * @generated SignedSource<<a4df78d76c9d5cd58567e13d635969ba>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -35,10 +35,6 @@ var v0 = [
 return {
   "argumentDefinitions": [
     {
-      "kind": "RootArgument",
-      "name": "colorId"
-    },
-    {
       "defaultValue": 48,
       "kind": "LocalArgument",
       "name": "count"
@@ -49,19 +45,13 @@ return {
       "name": "cursor"
     },
     {
-      "kind": "RootArgument",
-      "name": "minEntries"
-    },
-    {
-      "kind": "RootArgument",
-      "name": "minTournamentSize"
-    },
-    {
-      "kind": "RootArgument",
+      "defaultValue": "CONVERSION",
+      "kind": "LocalArgument",
       "name": "sortBy"
     },
     {
-      "kind": "RootArgument",
+      "defaultValue": "ONE_MONTH",
+      "kind": "LocalArgument",
       "name": "timePeriod"
     }
   ],
@@ -93,21 +83,6 @@ return {
     {
       "alias": "commanders",
       "args": [
-        {
-          "kind": "Variable",
-          "name": "colorId",
-          "variableName": "colorId"
-        },
-        {
-          "kind": "Variable",
-          "name": "minEntries",
-          "variableName": "minEntries"
-        },
-        {
-          "kind": "Variable",
-          "name": "minTournamentSize",
-          "variableName": "minTournamentSize"
-        },
         {
           "kind": "Variable",
           "name": "sortBy",
@@ -206,6 +181,6 @@ return {
 };
 })();
 
-(node as any).hash = "b5a6c24d9b40c399fa950a403034faa7";
+(node as any).hash = "2fb7df97aa4ec7dfcd1ef9ce2223abab";
 
 export default node;
