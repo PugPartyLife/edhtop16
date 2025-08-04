@@ -172,7 +172,6 @@ function CommandersPageShell({
     description: 'Discover top performing commanders in cEDH!',
   });
 
-  const {replaceRoute} = useNavigation();
   const [display, toggleDisplay] = useCommandersDisplay();
   const {preferences, updatePreference} = useCommanderPreferences();
 
@@ -187,9 +186,6 @@ function CommandersPageShell({
 
   const currentSortBy = preferences.sortBy || sortBy;
   const currentTimePeriod = preferences.timePeriod || timePeriod;
-  const currentColorId = preferences.colorId || colorId;
-  const currentMinEntries = preferences.minEntries || minEntries;
-  const currentMinTournamentSize = preferences.minTournamentSize || minTournamentSize;
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
