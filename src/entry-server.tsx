@@ -19,36 +19,69 @@ import {App} from './pages/_app';
 import {createContext} from './lib/server/context';
 import type {CommanderPreferences} from './lib/client/cookies';
 
+function createDefaultPreferences() {
+  return {
+    sortBy: 'CONVERSION' as const,
+    timePeriod: 'ONE_MONTH' as const,
+    display: 'card' as const,
+    minEntries: 0,
+    minTournamentSize: 0,
+    colorId: '',
+  };
+}
+
 function parseCookies(cookieHeader: string): { 
   cookies: Record<string, string>, 
-  commanderPreferences: CommanderPreferences 
+  commanderPreferences: ReturnType<typeof createDefaultPreferences>
 } {
+  console.log('🍪 Raw cookie header:', cookieHeader); // Debug line
+  
   const cookies: Record<string, string> = {};
-  let commanderPreferences: CommanderPreferences = {};
   
   if (!cookieHeader) {
-    return { cookies, commanderPreferences };
+    return { 
+      cookies, 
+      commanderPreferences: createDefaultPreferences()
+    };
   }
 
   cookieHeader.split(';').forEach((cookie) => {
     const [name, value] = cookie.trim().split('=');
     if (name && value) {
-      cookies[name] = decodeURIComponent(value);
+      cookies[name] = value;
     }
   });
   
-  try {
-    const cookiePrefs = cookies.commanderPreferences;
-    if (cookiePrefs) {
-      commanderPreferences = JSON.parse(decodeURIComponent(cookiePrefs));
-      console.log('🍪 Parsed preferences from cookies:', commanderPreferences);
+  let commanderPreferences = createDefaultPreferences();
+  
+  if (cookies.commanderPreferences) {
+    try {
+      const decoded = decodeURIComponent(cookies.commanderPreferences);
+      console.log('🍪 Decoded cookie value:', decoded); // Debug line
+      const parsed = JSON.parse(decoded);
+      console.log('🍪 Parsed cookie object:', parsed); // Debug line
+      
+      // FIX: Use nullish coalescing (??) instead of logical OR (||)
+      // and be more explicit about what values to preserve
+      commanderPreferences = {
+        sortBy: parsed.sortBy ?? 'CONVERSION',
+        timePeriod: parsed.timePeriod ?? 'ONE_MONTH', 
+        display: parsed.display ?? 'card',
+        minEntries: parsed.minEntries ?? 0,
+        minTournamentSize: parsed.minTournamentSize ?? 0,
+        colorId: parsed.colorId ?? '',
+      };
+      console.log('🍪 Final server preferences:', commanderPreferences);
+    } catch (error) {
+      console.warn('❌ Failed to parse commander preferences:', error);
     }
-  } catch (error) {
-    console.warn('❌ Failed to parse commander preferences:', error);
   }
   
   return { cookies, commanderPreferences };
 }
+
+const cookieCache = new WeakMap<Request, ReturnType<typeof parseCookies>>();
+
 
 export function useCreateHandler(
   template: string,
@@ -67,36 +100,42 @@ export function useCreateHandler(
       }),
     ],
     context: async ({request}) => {
-      let commanderPreferences: CommanderPreferences = {};
+  // Check cache first
+  if (cookieCache.has(request)) {
+    const cached = cookieCache.get(request)!;
+    return createContext(cached.commanderPreferences);
+  }
 
-      try {
-        const body = await request.clone().text();
-        const parsed = JSON.parse(body);
+  let commanderPreferences = createDefaultPreferences();
 
-        if (parsed.extensions?.commanderPreferences) {
-          console.log(
-            '🎯 GraphQL Context: Using preferences from extensions:',
-            parsed.extensions.commanderPreferences,
-          );
-          commanderPreferences = parsed.extensions.commanderPreferences;
-        } else {
-          const cookieHeader = request.headers.get('cookie') || '';
-          const { commanderPreferences: cookiePrefs } = parseCookies(cookieHeader);
-          commanderPreferences = cookiePrefs;
-          
-          if (Object.keys(commanderPreferences).length > 0) {
-            console.log(
-              '🎯 GraphQL Context: Using preferences from cookies:',
-              commanderPreferences,
-            );
-          }
-        }
-      } catch (error) {
-        console.warn('❌ GraphQL Context: Failed to parse preferences:', error);
-      }
+  try {
+    const body = await request.clone().text();
+    const parsed = JSON.parse(body);
 
-      return createContext(commanderPreferences);
-    },
+    if (parsed.extensions?.commanderPreferences) {
+      // FIX: Use nullish coalescing here too
+      const extPrefs = parsed.extensions.commanderPreferences;
+      commanderPreferences = {
+        sortBy: extPrefs.sortBy ?? 'CONVERSION',
+        timePeriod: extPrefs.timePeriod ?? 'ONE_MONTH',
+        display: extPrefs.display ?? 'card',
+        minEntries: extPrefs.minEntries ?? 0,
+        minTournamentSize: extPrefs.minTournamentSize ?? 0,
+        colorId: extPrefs.colorId ?? '',
+      };
+    } else {
+      const cookieHeader = request.headers.get('cookie') || '';
+      const result = parseCookies(cookieHeader);
+      commanderPreferences = result.commanderPreferences;
+      
+      cookieCache.set(request, result);
+    }
+  } catch (error) {
+    console.warn('❌ GraphQL Context: Failed to parse preferences:', error);
+  }
+
+  return createContext(commanderPreferences);
+},
   });
 
   const entryPointHandler: express.Handler = async (req, res) => {
@@ -145,8 +184,14 @@ export function useCreateHandler(
       template.replace(/<!--\s*@river:(\w+)\s*-->/g, evaluateRiverDirective),
     );
 
-    res.status(200).set({'Content-Type': 'text/html'}).end(renderedHtml);
-  };
+const preferencesScript = `
+<script>
+  window.__SERVER_PREFERENCES__ = ${JSON.stringify(commanderPreferences)};
+</script>`;
+
+const htmlWithPreferences = renderedHtml.replace('</head>', `${preferencesScript}\n</head>`);
+res.status(200).set({'Content-Type': 'text/html'}).end(htmlWithPreferences);
+    };
 
   const r = express.Router();
   r.use('/api/graphql', graphqlHandler);

@@ -32,7 +32,7 @@ import {
   setRefetchCallback,
   clearRefetchCallback,
   CommanderPreferences
-} from '#src/lib/client/cookies';
+} from '../lib/client/cookies';
 import {ColorIdentity} from '../assets/icons/colors';
 import {Card} from '../components/card';
 import {ColorSelection} from '../components/color_selection';
@@ -55,7 +55,7 @@ function debounce<T extends (...args: any[]) => any>(
   }) as T;
 }
 
-function TopCommandersCard({
+const TopCommandersCard = React.memo(function TopCommandersCard({
   display = 'card',
   secondaryStatistic,
   ...props
@@ -102,7 +102,17 @@ function TopCommandersCard({
     }
 
     return stats.join(' / ');
-  }, [commander, secondaryStatistic]);
+  }, [commander.stats, secondaryStatistic]);
+
+  // Memoize image data to prevent recalculation
+  const images = useMemo(() => 
+    commander.cards
+      .flatMap((c) => c.imageUrls)
+      .map((img) => ({
+        src: img,
+        alt: `${commander.name} card art`,
+      }))
+  , [commander.cards, commander.name]);
 
   if (display === 'table') {
     return (
@@ -137,12 +147,7 @@ function TopCommandersCard({
   return (
     <Card
       bottomText={commanderStats}
-      images={commander.cards
-        .flatMap((c) => c.imageUrls)
-        .map((img) => ({
-          src: img,
-          alt: `${commander.name} card art`,
-        }))}
+      images={images}
     >
       <div className="flex h-32 flex-col space-y-2">
         <Link
@@ -156,7 +161,7 @@ function TopCommandersCard({
       </div>
     </Card>
   );
-}
+});
 
 function CommandersPageShell({
   sortBy,
@@ -182,9 +187,6 @@ function CommandersPageShell({
     title: 'cEDH Commanders',
     description: 'Discover top performing commanders in cEDH!',
   });
-
-  //console.log('🏠 Shell received display:', display);
-  //console.log('🏠 Shell received preferences:', preferences);
 
   const [localMinEntries, setLocalMinEntries] = useState(
     minEntries?.toString() || '',
@@ -212,8 +214,9 @@ function CommandersPageShell({
     );
   }, [minTournamentSize]);
 
-  const debouncedMinEntriesUpdate = useCallback(
-    debounce((value: string) => {
+  // Memoize debounced functions
+  const debouncedMinEntriesUpdate = useMemo(
+    () => debounce((value: string) => {
       if (value === '') {
         updatePreference('minEntries', null);
       } else {
@@ -226,8 +229,8 @@ function CommandersPageShell({
     [updatePreference],
   );
 
-  const debouncedEventSizeUpdate = useCallback(
-    debounce((value: string) => {
+  const debouncedEventSizeUpdate = useMemo(
+    () => debounce((value: string) => {
       if (value === '') {
         updatePreference('minTournamentSize', null);
       } else {
@@ -240,6 +243,7 @@ function CommandersPageShell({
     [updatePreference],
   );
 
+  // Optimize all event handlers with useCallback
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === 'Go') {
       (e.target as HTMLInputElement).blur();
@@ -442,24 +446,34 @@ function CommandersPageShell({
   );
 }
 
-/*function useCommandersDisplay() {
-  const {display} = useRouteParams('/');
-  const {replaceRoute} = useNavigation();
-
-  const toggleDisplay = useCallback(() => {
-    replaceRoute('/', {display: display === 'table' ? 'card' : 'table'});
-  }, [display, replaceRoute]);
-
-  return useMemo(() => {
-    return [display === 'table' ? 'table' : 'card', toggleDisplay] as const;
-  }, [display, toggleDisplay]);
-}*/
-
 /** @resource m#index */
 export const CommandersPage: EntryPointComponent<
   {commandersQueryRef: pages_CommandersQuery},
   {}
 > = ({queries}) => {
+  const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
+  
+  const effectivePreferences = useMemo(() => {
+    if (!isHydrated) {
+      return {
+        sortBy: preferences.sortBy || 'CONVERSION',
+        timePeriod: preferences.timePeriod || 'ONE_MONTH',
+        display: preferences.display || 'card',
+        minEntries: preferences.minEntries || 0,
+        minTournamentSize: preferences.minTournamentSize || 0,
+        colorId: preferences.colorId || '',
+      };
+    }
+    return preferences;
+  }, [preferences, isHydrated]);
+
+  console.log('🎭 [RENDER] CommandersPage rendering with:', {
+    preferences,
+    effectivePreferences,
+    isHydrated,
+    timestamp: new Date().toISOString()
+  });
+  
   const query = usePreloadedQuery(
     graphql`
       query pages_CommandersQuery(
@@ -473,110 +487,82 @@ export const CommandersPage: EntryPointComponent<
     queries.commandersQueryRef,
   );
 
-
-const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
-  const preferencesRef = useRef(preferences);
-  const [displayOverride, setDisplayOverride] = useState<'card' | 'table' | null>(null);
-
-  
-  // Memoize display calculation to prevent unnecessary re-renders
-  const display = useMemo(() => {
-    return isHydrated ? (preferences.display || 'card') : 'card';
-  }, [preferences.display, isHydrated]);
-
-  // Reduce logging frequency
-  const logDisplay = useRef(display);
-  useEffect(() => {
-    if (logDisplay.current !== display) {
-      console.log('🎭 Display changed:', display, {
-        fromPrefs: preferences.display,
-        allPrefs: preferences,
-        final: display
-      });
-      logDisplay.current = display;
-    }
-  }, [display, preferences.display, preferences]);
-
-  useEffect(() => {
-    if (preferences.display && preferences.display !== displayOverride) {
-      //console.log('🎭 Preferences updated, setting override:', preferences.display);
-      setDisplayOverride(preferences.display);
-    }
-  }, [preferences.display, displayOverride]);
-  
-  console.log('🎭 Render with display:', display, {
-    override: displayOverride,
-    fromPrefs: preferences.display,
-    final: display
-  });
-
-  const {data, loadNext, isLoadingNext, hasNext, refetch} =
-    usePaginationFragment<TopCommandersQuery, pages_topCommanders$key>(
-      graphql`
-        fragment pages_topCommanders on Query
-        @argumentDefinitions(
-          cursor: {type: "String"}
-          count: {type: "Int", defaultValue: 48}
-          sortBy: {type: "CommandersSortBy", defaultValue: CONVERSION}
-          timePeriod: {type: "TimePeriod", defaultValue: ONE_MONTH}
-        )
-        @refetchable(queryName: "TopCommandersQuery") {
-          commanders(
-            first: $count
-            after: $cursor
-            sortBy: $sortBy
-            timePeriod: $timePeriod
-          ) @connection(key: "pages__commanders") {
-            edges {
-              node {
-                id
-                ...pages_TopCommandersCard
-              }
+  const {data, loadNext, isLoadingNext, hasNext, refetch} = usePaginationFragment<TopCommandersQuery, pages_topCommanders$key>(
+    graphql`
+      fragment pages_topCommanders on Query
+      @argumentDefinitions(
+        cursor: {type: "String"}
+        count: {type: "Int", defaultValue: 48}
+        sortBy: {type: "CommandersSortBy", defaultValue: CONVERSION}
+        timePeriod: {type: "TimePeriod", defaultValue: ONE_MONTH}
+      )
+      @refetchable(queryName: "TopCommandersQuery") {
+        commanders(
+          first: $count
+          after: $cursor
+          sortBy: $sortBy
+          timePeriod: $timePeriod
+        ) @connection(key: "pages__commanders") {
+          edges {
+            node {
+              id
+              ...pages_TopCommandersCard
             }
           }
         }
-      `,
-      query,
-    );
+      }
+    `,
+    query,
+  );
 
-   useEffect(() => {
-    preferencesRef.current = preferences;
-  }, [preferences]);
+  console.log('🎭 [DATA] Received commanders data - count:', data.commanders.edges.length);
 
-  useEffect(() => {
-  //console.log('🔄 Setting up refetch callback');
+  const display = useMemo(() => {
+    const result = isHydrated ? (effectivePreferences.display || 'card') : 'card';
+    console.log('🎭 [DISPLAY] Display calculated:', {
+      isHydrated,
+      prefDisplay: effectivePreferences.display,
+      result
+    });
+    return result;
+  }, [isHydrated, effectivePreferences.display]);
 
-  setRefetchCallback((currentPrefs) => {
-    //console.log('🔄 REFETCH TRIGGERED FROM CALLBACK');
-    //console.log('🔄 Passed preferences:', currentPrefs);
-    //console.log('🔄 Ref preferences:', preferencesRef.current);
-    
-   
-    const prefsToUse = currentPrefs || preferencesRef.current;
-    //console.log('🔄 Using preferences for refetch:', prefsToUse);
-
-    startTransition(() => {
-      refetch(
-        {
-          count: 48,
-          cursor: null,
-        },
-        {
-          fetchPolicy: 'network-only',
-        },
-      );
+  // Memoize the refetch callback to prevent recreating on every render
+const handleRefetch = useCallback((currentPrefs?: CommanderPreferences) => {
+  console.log('🔄 REFETCH TRIGGERED FROM CALLBACK');
+  startTransition(() => {
+    refetch({
+      sortBy: (effectivePreferences.sortBy as CommandersSortBy) || 'CONVERSION',
+      timePeriod: (effectivePreferences.timePeriod as TimePeriod) || 'ONE_MONTH',
+    }, {
+      fetchPolicy: 'network-only',
     });
   });
+}, [refetch, effectivePreferences]);
 
-  return () => {
-    //console.log('🔄 Cleaning up refetch callback');
-    clearRefetchCallback();
-  };
-}, [refetch]);
+  // Memoize the load more handler
+  const handleLoadMore = useCallback((count: number) => {
+    startTransition(() => {
+      loadNext(count);
+    });
+  }, [loadNext]);
 
+  useEffect(() => {
+    setRefetchCallback(handleRefetch);
+    return () => {
+      clearRefetchCallback();
+    };
+  }, [handleRefetch]);
 
-  const logData = useCallback(
-    debounce((data) => {
+  useEffect(() => {
+    if (isHydrated) {
+      console.log('🎭 [HYDRATED] Component fully hydrated, preferences:', effectivePreferences);
+    }
+  }, [isHydrated, effectivePreferences]);
+
+  // Memoize the debounced logging function
+  const logData = useMemo(
+    () => debounce((data) => {
       console.log('📊 === DATA CHANGED ===');
       console.log('📊 Commander count:', data?.commanders?.edges?.length);
       console.log('📊 Timestamp:', new Date().toISOString());
@@ -589,16 +575,20 @@ const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
     logData(data);
   }, [data, logData]);
 
+  const secondaryStatistic = effectivePreferences.sortBy === 'CONVERSION' || effectivePreferences.sortBy === 'TOP_CUTS'
+    ? 'topCuts'
+    : 'count';
+
   return (
     <CommandersPageShell
-      sortBy={(preferences.sortBy as CommandersSortBy) || 'CONVERSION'}
-      timePeriod={(preferences.timePeriod as TimePeriod) || 'ONE_MONTH'}
-      colorId={preferences.colorId || ''}
-      minEntries={preferences.minEntries || null}
-      minTournamentSize={preferences.minTournamentSize || null}
+      sortBy={(effectivePreferences.sortBy as CommandersSortBy) || 'CONVERSION'}
+      timePeriod={(effectivePreferences.timePeriod as TimePeriod) || 'ONE_MONTH'}
+      colorId={effectivePreferences.colorId || ''}
+      minEntries={effectivePreferences.minEntries || null}
+      minTournamentSize={effectivePreferences.minTournamentSize || null}
       display={display}
       updatePreference={updatePreference}
-      preferences={preferences}
+      preferences={effectivePreferences}
     >
       <div
         className={cn(
@@ -624,12 +614,7 @@ const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
             key={node.id}
             display={display}
             commander={node}
-            secondaryStatistic={
-              preferences.sortBy === 'CONVERSION' ||
-              preferences.sortBy === 'TOP_CUTS'
-                ? 'topCuts'
-                : 'count'
-            }
+            secondaryStatistic={secondaryStatistic}
           />
         ))}
       </div>
@@ -637,11 +622,7 @@ const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
       <LoadMoreButton
         hasNext={hasNext}
         isLoadingNext={isLoadingNext}
-        loadNext={(count) => {
-          startTransition(() => {
-            loadNext(count);
-          });
-        }}
+        loadNext={handleLoadMore}
       />
 
       <Footer />
