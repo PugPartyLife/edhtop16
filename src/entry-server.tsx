@@ -19,9 +19,16 @@ import {App} from './pages/_app';
 import {createContext} from './lib/server/context';
 import type {CommanderPreferences} from './lib/client/cookies';
 
-function parseCookies(cookieHeader: string): Record<string, string> {
+function parseCookiesOnce(cookieHeader: string): { 
+  cookies: Record<string, string>, 
+  commanderPreferences: CommanderPreferences 
+} {
   const cookies: Record<string, string> = {};
-  if (!cookieHeader) return cookies;
+  let commanderPreferences: CommanderPreferences = {};
+  
+  if (!cookieHeader) {
+    return { cookies, commanderPreferences };
+  }
 
   cookieHeader.split(';').forEach((cookie) => {
     const [name, value] = cookie.trim().split('=');
@@ -29,8 +36,19 @@ function parseCookies(cookieHeader: string): Record<string, string> {
       cookies[name] = decodeURIComponent(value);
     }
   });
-
-  return cookies;
+  
+  // Parse commander preferences immediately while we have the cookies
+  try {
+    const cookiePrefs = cookies.commanderPreferences;
+    if (cookiePrefs) {
+      commanderPreferences = JSON.parse(decodeURIComponent(cookiePrefs));
+      console.log('🍪 Parsed preferences from cookies:', commanderPreferences);
+    }
+  } catch (error) {
+    console.warn('❌ Failed to parse commander preferences:', error);
+  }
+  
+  return { cookies, commanderPreferences };
 }
 
 export function useCreateHandler(
@@ -64,11 +82,11 @@ export function useCreateHandler(
           commanderPreferences = parsed.extensions.commanderPreferences;
         } else {
           const cookieHeader = request.headers.get('cookie') || '';
-          const cookies = parseCookies(cookieHeader);
-          const cookiePrefs = cookies.commanderPreferences;
-
-          if (cookiePrefs) {
-            commanderPreferences = JSON.parse(decodeURIComponent(cookiePrefs));
+          // Use the optimized function
+          const { commanderPreferences: cookiePrefs } = parseCookiesOnce(cookieHeader);
+          commanderPreferences = cookiePrefs;
+          
+          if (Object.keys(commanderPreferences).length > 0) {
             console.log(
               '🎯 GraphQL Context: Using preferences from cookies:',
               commanderPreferences,
@@ -86,20 +104,11 @@ export function useCreateHandler(
   const entryPointHandler: express.Handler = async (req, res) => {
     const head = createHead();
 
-    let commanderPreferences: CommanderPreferences = {};
-    try {
-      const cookies = parseCookies(req.headers.cookie || '');
-      const cookiePrefs = cookies.commanderPreferences;
-
-      if (cookiePrefs) {
-        commanderPreferences = JSON.parse(decodeURIComponent(cookiePrefs));
-        console.log(
-          '🏗️ SSR: Using preferences from cookies:',
-          commanderPreferences,
-        );
-      }
-    } catch (error) {
-      console.warn('❌ SSR: Failed to parse preferences from cookies:', error);
+    // Use the optimized function here too
+    const { commanderPreferences } = parseCookiesOnce(req.headers.cookie || '');
+    
+    if (Object.keys(commanderPreferences).length > 0) {
+      console.log('🏗️ SSR: Using preferences from cookies:', commanderPreferences);
     }
 
     const env = createServerEnvironment(

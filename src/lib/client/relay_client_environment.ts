@@ -3,41 +3,52 @@ import type {CommanderPreferences} from './cookies';
 
 let relayCommanderPreferences: CommanderPreferences = {};
 
+const requestCache = new Map<string, Promise<any>>();
+
 export function createClientNetwork() {
   return Network.create(async (params, variables) => {
-    console.log('🚀 === NEW GRAPHQL REQUEST ===');
-    console.log('🚀 Operation:', params.name);
-    console.log('🚀 Variables:', variables);
-    console.log('🚀 Preferences being sent:', relayCommanderPreferences);
+    // Create cache key
+    const cacheKey = `${params.id || params.name}-${JSON.stringify(variables)}-${JSON.stringify(relayCommanderPreferences)}`;
+    
+    // Return cached request if in flight
+    if (requestCache.has(cacheKey)) {
+      console.log('🚀 Using cached request for:', params.name);
+      return requestCache.get(cacheKey)!;
+    }
+    
+    console.log('🚀 New GraphQL Request:', params.name);
+    
+    const requestPromise = (async () => {
+      const requestBody = {
+        query: params.text,
+        id: params.id,
+        variables,
+        extensions: {
+          commanderPreferences: relayCommanderPreferences,
+        },
+      };
+      
+      const response = await fetch('/api/graphql', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
 
-    const requestBody = {
-      query: params.text,
-      id: params.id,
-      variables,
-      extensions: {
-        commanderPreferences: relayCommanderPreferences,
-      },
-    };
-
-    const response = await fetch('/api/graphql', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    const json = await response.text();
-    const parsed = JSON.parse(json);
-
-    console.log('🚀 Response received:', {
-      commanderCount: parsed?.data?.commanders?.edges?.length,
-      firstCommander: parsed?.data?.commanders?.edges?.[0]?.node?.name,
-    });
-    console.log('🚀 === END REQUEST ===');
-
-    return parsed;
+      const result = await response.json();
+      
+      // Remove from cache after completion
+      requestCache.delete(cacheKey);
+      
+      return result;
+    })();
+    
+    // Cache the promise
+    requestCache.set(cacheKey, requestPromise);
+    
+    return requestPromise;
   });
 }
 
