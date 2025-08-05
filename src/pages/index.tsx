@@ -474,16 +474,16 @@ export const CommandersPage: EntryPointComponent<
   );
 
 
-  const {preferences, updatePreference} = useCommanderPreferences();
+const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
   const preferencesRef = useRef(preferences);
   const [displayOverride, setDisplayOverride] = useState<'card' | 'table' | null>(null);
 
   
   // Memoize display calculation to prevent unnecessary re-renders
   const display = useMemo(() => {
-    return preferences.display || 'card';
-  }, [preferences.display]);
-  
+    return isHydrated ? (preferences.display || 'card') : 'card';
+  }, [preferences.display, isHydrated]);
+
   // Reduce logging frequency
   const logDisplay = useRef(display);
   useEffect(() => {
