@@ -33,7 +33,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   return cookies;
 }
 
-export function createHandler(
+export function useCreateHandler(
   template: string,
   persistedQueries: Record<string, string>,
   manifest?: Manifest,
@@ -53,7 +53,6 @@ export function createHandler(
       let commanderPreferences: CommanderPreferences = {};
       
       try {
-        // Parse preferences from extensions or cookies
         const body = await request.clone().text();
         const parsed = JSON.parse(body);
         
@@ -74,7 +73,6 @@ export function createHandler(
         console.warn('❌ GraphQL Context: Failed to parse preferences:', error);
       }
 
-      // Use createContext consistently
       return createContext(commanderPreferences);
     },
   });
