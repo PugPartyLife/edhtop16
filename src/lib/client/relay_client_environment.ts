@@ -7,10 +7,8 @@ const requestCache = new Map<string, Promise<any>>();
 
 export function createClientNetwork() {
   return Network.create(async (params, variables) => {
-    // Create cache key
     const cacheKey = `${params.id || params.name}-${JSON.stringify(variables)}-${JSON.stringify(relayCommanderPreferences)}`;
     
-    // Return cached request if in flight
     if (requestCache.has(cacheKey)) {
       console.log('🚀 Using cached request for:', params.name);
       return requestCache.get(cacheKey)!;
@@ -39,13 +37,11 @@ export function createClientNetwork() {
 
       const result = await response.json();
       
-      // Remove from cache after completion
       requestCache.delete(cacheKey);
       
       return result;
     })();
     
-    // Cache the promise
     requestCache.set(cacheKey, requestPromise);
     
     return requestPromise;

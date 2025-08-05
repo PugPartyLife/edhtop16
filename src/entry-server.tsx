@@ -19,7 +19,7 @@ import {App} from './pages/_app';
 import {createContext} from './lib/server/context';
 import type {CommanderPreferences} from './lib/client/cookies';
 
-function parseCookiesOnce(cookieHeader: string): { 
+function parseCookies(cookieHeader: string): { 
   cookies: Record<string, string>, 
   commanderPreferences: CommanderPreferences 
 } {
@@ -37,7 +37,6 @@ function parseCookiesOnce(cookieHeader: string): {
     }
   });
   
-  // Parse commander preferences immediately while we have the cookies
   try {
     const cookiePrefs = cookies.commanderPreferences;
     if (cookiePrefs) {
@@ -82,8 +81,7 @@ export function useCreateHandler(
           commanderPreferences = parsed.extensions.commanderPreferences;
         } else {
           const cookieHeader = request.headers.get('cookie') || '';
-          // Use the optimized function
-          const { commanderPreferences: cookiePrefs } = parseCookiesOnce(cookieHeader);
+          const { commanderPreferences: cookiePrefs } = parseCookies(cookieHeader);
           commanderPreferences = cookiePrefs;
           
           if (Object.keys(commanderPreferences).length > 0) {
@@ -104,8 +102,7 @@ export function useCreateHandler(
   const entryPointHandler: express.Handler = async (req, res) => {
     const head = createHead();
 
-    // Use the optimized function here too
-    const { commanderPreferences } = parseCookiesOnce(req.headers.cookie || '');
+    const { commanderPreferences } = parseCookies(req.headers.cookie || '');
     
     if (Object.keys(commanderPreferences).length > 0) {
       console.log('🏗️ SSR: Using preferences from cookies:', commanderPreferences);

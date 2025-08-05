@@ -86,24 +86,21 @@ const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
       
       console.log('🍪 New preferences object:', newPrefs);
       
-      // Always update cookie and relay preferences immediately
       setCookie('commanderPreferences', JSON.stringify(newPrefs));
       updateRelayPreferences(newPrefs);
       
-      // Clear existing refetch timeout
       if (refetchTimeoutRef.current) {
         clearTimeout(refetchTimeoutRef.current);
         refetchTimeoutRef.current = null;
       }
       
-      // Schedule new refetch
       refetchTimeoutRef.current = setTimeout(() => {
         console.log('🍪 Triggering refetch after preference update');
         if (refetchCallback) {
           refetchCallback();
         }
         refetchTimeoutRef.current = null;
-      }, 250); // Short delay to batch rapid changes
+      }, 250);
       
       return newPrefs;
     });
