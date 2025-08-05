@@ -40,7 +40,15 @@ function cleanupCache() {
   console.log(`🧹 Cache cleanup: ${keysToDelete.length} expired, ${queryCache.size} remaining`);
 }
 
-//setInterval(cleanupCache, 5 * 60 * 1000);
+const isGenerationMode = process.argv.some(arg => 
+  arg.includes('generate') || 
+  arg.includes('build') || 
+  arg.includes('schema')
+) || process.env.npm_lifecycle_event?.includes('generate');  // generate:schema hangs without this cause of node...
+
+if (!isGenerationMode) {
+  setInterval(cleanupCache, 5 * 60 * 1000);
+}
 
 const CommandersSortBy = builder.enumType('CommandersSortBy', {
   values: ['POPULARITY', 'CONVERSION', 'TOP_CUTS'] as const,
