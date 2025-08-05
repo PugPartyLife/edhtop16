@@ -13,6 +13,35 @@ import {Entry} from './entry';
 import {FirstPartyPromoRef, getActivePromotions} from './promo';
 import {minDateFromTimePeriod, TimePeriod, type TimePeriodType} from './types';
 
+const queryCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 60000; // 1 minute
+const MAX_CACHE_SIZE = 100; // Maximum number of cached queries
+
+function cleanupCache() {
+  const now = Date.now();
+  const keysToDelete: string[] = [];
+  
+  for (const [key, value] of queryCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      keysToDelete.push(key);
+    }
+  }
+  
+  keysToDelete.forEach(key => queryCache.delete(key));
+  
+  if (queryCache.size > MAX_CACHE_SIZE) {
+    const entries = Array.from(queryCache.entries())
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    
+    const toRemove = entries.slice(0, queryCache.size - MAX_CACHE_SIZE);
+    toRemove.forEach(([key]) => queryCache.delete(key));
+  }
+  
+  console.log(`🧹 Cache cleanup: ${keysToDelete.length} expired, ${queryCache.size} remaining`);
+}
+
+//setInterval(cleanupCache, 5 * 60 * 1000);
+
 const CommandersSortBy = builder.enumType('CommandersSortBy', {
   values: ['POPULARITY', 'CONVERSION', 'TOP_CUTS'] as const,
 });
@@ -228,6 +257,29 @@ builder.queryField('commanders', (t) =>
         0;
       const colorId = context.commanderPreferences.colorId ?? args.colorId;
 
+      const cacheKey = JSON.stringify({
+        args: {
+          first: args.first,
+          after: args.after,
+          before: args.before,
+          last: args.last,
+        },
+        filters: {
+          sortBy,
+          timePeriod,
+          minEntries,
+          minTournamentSize,
+          colorId,
+        },
+      });
+
+      const cached = queryCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        console.log('⚡ Using cached commanders query result');
+        return cached.data;
+      }
+
+      console.log('🔍 Executing fresh commanders query');
       console.log('⚙️ Commander resolver - final values:', {
         sortBy,
         timePeriod,
@@ -239,7 +291,7 @@ builder.queryField('commanders', (t) =>
         finalUsed: {sortBy, timePeriod, minEntries, minTournamentSize, colorId},
       });
 
-      return resolveCursorConnection(
+      const result = await resolveCursorConnection(
         {args, toCursor: (parent) => `${parent.id}`},
         async ({
           before,
@@ -355,6 +407,15 @@ builder.queryField('commanders', (t) =>
           return query.execute();
         },
       );
+
+      queryCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now(),
+      });
+
+      console.log(`💾 Cached commanders query result (cache size: ${queryCache.size})`);
+
+      return result;
     },
   }),
 );
