@@ -26,7 +26,10 @@ export function createServerEnvironment(
 
     const contextValue = createContext(commanderPreferences);
 
-    console.log('🏗️ SSR GraphQL: Executing with context preferences:', contextValue.commanderPreferences);
+    console.log(
+      '🏗️ SSR GraphQL: Executing with context preferences:',
+      contextValue.commanderPreferences,
+    );
 
     const results = await graphql({
       schema,

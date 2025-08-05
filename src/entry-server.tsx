@@ -49,24 +49,30 @@ export function useCreateHandler(
         getPersistedOperation: (key) => persistedQueries[key] ?? null,
       }),
     ],
-    context: async ({ request }) => {
+    context: async ({request}) => {
       let commanderPreferences: CommanderPreferences = {};
-      
+
       try {
         const body = await request.clone().text();
         const parsed = JSON.parse(body);
-        
+
         if (parsed.extensions?.commanderPreferences) {
-          console.log('🎯 GraphQL Context: Using preferences from extensions:', parsed.extensions.commanderPreferences);
+          console.log(
+            '🎯 GraphQL Context: Using preferences from extensions:',
+            parsed.extensions.commanderPreferences,
+          );
           commanderPreferences = parsed.extensions.commanderPreferences;
         } else {
           const cookieHeader = request.headers.get('cookie') || '';
           const cookies = parseCookies(cookieHeader);
           const cookiePrefs = cookies.commanderPreferences;
-          
+
           if (cookiePrefs) {
             commanderPreferences = JSON.parse(decodeURIComponent(cookiePrefs));
-            console.log('🎯 GraphQL Context: Using preferences from cookies:', commanderPreferences);
+            console.log(
+              '🎯 GraphQL Context: Using preferences from cookies:',
+              commanderPreferences,
+            );
           }
         }
       } catch (error) {
@@ -84,16 +90,23 @@ export function useCreateHandler(
     try {
       const cookies = parseCookies(req.headers.cookie || '');
       const cookiePrefs = cookies.commanderPreferences;
-      
+
       if (cookiePrefs) {
         commanderPreferences = JSON.parse(decodeURIComponent(cookiePrefs));
-        console.log('🏗️ SSR: Using preferences from cookies:', commanderPreferences);
+        console.log(
+          '🏗️ SSR: Using preferences from cookies:',
+          commanderPreferences,
+        );
       }
     } catch (error) {
       console.warn('❌ SSR: Failed to parse preferences from cookies:', error);
     }
 
-    const env = createServerEnvironment(schema, persistedQueries, commanderPreferences);
+    const env = createServerEnvironment(
+      schema,
+      persistedQueries,
+      commanderPreferences,
+    );
 
     const RiverApp = await createRiverServerApp(
       {getEnvironment: () => env},

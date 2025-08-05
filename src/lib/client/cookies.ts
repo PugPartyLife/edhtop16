@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { updateRelayPreferences } from './relay_client_environment';
-import type { CommandersSortBy, TimePeriod } from '#genfiles/queries/pages_CommandersQuery.graphql';
+import {useState, useEffect, useRef, useCallback} from 'react';
+import {updateRelayPreferences} from './relay_client_environment';
+import type {
+  CommandersSortBy,
+  TimePeriod,
+} from '#genfiles/queries/pages_CommandersQuery.graphql';
 
 export interface CommanderPreferences {
   sortBy?: CommandersSortBy;
@@ -46,11 +49,17 @@ export function useCommanderPreferences() {
       if (cookieValue) {
         try {
           const savedPrefs = JSON.parse(decodeURIComponent(cookieValue));
-          console.log('🍪 Initial load: Found preferences in cookies:', savedPrefs);
+          console.log(
+            '🍪 Initial load: Found preferences in cookies:',
+            savedPrefs,
+          );
           updateRelayPreferences(savedPrefs);
           return savedPrefs;
         } catch (error) {
-          console.warn('❌ Initial load: Failed to parse preferences from cookies:', error);
+          console.warn(
+            '❌ Initial load: Failed to parse preferences from cookies:',
+            error,
+          );
         }
       }
     }
@@ -61,35 +70,38 @@ export function useCommanderPreferences() {
     console.log('🍪 useCommanderPreferences mounted with:', preferences);
   }, []);
 
-  const updatePreference = useCallback((key: keyof CommanderPreferences, value: any) => {
-    console.log('🍪 updatePreference called:', key, '=', value);
-    
-    setPreferences(prevPrefs => {
-      const newPrefs = { ...prevPrefs };
-      
-      if (!value || value === '' || value === null) {
-        delete newPrefs[key];
-      } else {
-        newPrefs[key] = value;
-      }
-      
-      //console.log('🍪 New preferences object:', newPrefs);
-      
-      setCookie('commanderPreferences', JSON.stringify(newPrefs));
-      updateRelayPreferences(newPrefs);
-    
-      setTimeout(() => {
-        console.log('🍪 Triggering refetch from updatePreference');
-        if (refetchCallback) {
-          refetchCallback();
+  const updatePreference = useCallback(
+    (key: keyof CommanderPreferences, value: any) => {
+      console.log('🍪 updatePreference called:', key, '=', value);
+
+      setPreferences((prevPrefs) => {
+        const newPrefs = {...prevPrefs};
+
+        if (!value || value === '' || value === null) {
+          delete newPrefs[key];
         } else {
-          console.log('🍪 No refetch callback available');
+          newPrefs[key] = value;
         }
-      }, 100);
-      
-      return newPrefs;
-    });
-  }, []);
+
+        //console.log('🍪 New preferences object:', newPrefs);
+
+        setCookie('commanderPreferences', JSON.stringify(newPrefs));
+        updateRelayPreferences(newPrefs);
+
+        setTimeout(() => {
+          console.log('🍪 Triggering refetch from updatePreference');
+          if (refetchCallback) {
+            refetchCallback();
+          } else {
+            console.log('🍪 No refetch callback available');
+          }
+        }, 100);
+
+        return newPrefs;
+      });
+    },
+    [],
+  );
 
   return {
     preferences,
