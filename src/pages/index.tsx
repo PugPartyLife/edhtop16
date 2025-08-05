@@ -478,14 +478,31 @@ export const CommandersPage: EntryPointComponent<
   const preferencesRef = useRef(preferences);
   const [displayOverride, setDisplayOverride] = useState<'card' | 'table' | null>(null);
 
+  
+  // Memoize display calculation to prevent unnecessary re-renders
+  const display = useMemo(() => {
+    return preferences.display || 'card';
+  }, [preferences.display]);
+  
+  // Reduce logging frequency
+  const logDisplay = useRef(display);
+  useEffect(() => {
+    if (logDisplay.current !== display) {
+      console.log('🎭 Display changed:', display, {
+        fromPrefs: preferences.display,
+        allPrefs: preferences,
+        final: display
+      });
+      logDisplay.current = display;
+    }
+  }, [display, preferences.display, preferences]);
+
   useEffect(() => {
     if (preferences.display && preferences.display !== displayOverride) {
       //console.log('🎭 Preferences updated, setting override:', preferences.display);
       setDisplayOverride(preferences.display);
     }
   }, [preferences.display, displayOverride]);
-  
-  const display = displayOverride || preferences.display || 'card';
   
   console.log('🎭 Render with display:', display, {
     override: displayOverride,
@@ -557,19 +574,20 @@ export const CommandersPage: EntryPointComponent<
   };
 }, [refetch]);
 
+
+  const logData = useCallback(
+    debounce((data) => {
+      console.log('📊 === DATA CHANGED ===');
+      console.log('📊 Commander count:', data?.commanders?.edges?.length);
+      console.log('📊 Timestamp:', new Date().toISOString());
+      console.log('📊 === END DATA CHANGE ===');
+    }, 200),
+    []
+  );
+
   useEffect(() => {
-    console.log('📊 === DATA CHANGED ===');
-    //console.log('📊 Commander count:', data?.commanders?.edges?.length);
-    //console.log('📊 Full data structure:', data);
-    //console.log('📊 First edge:', data?.commanders?.edges?.[0]);
-    //console.log('📊 First node:', data?.commanders?.edges?.[0]?.node);
-    //console.log(
-    //  '📊 Available node fields:',
-    //  Object.keys(data?.commanders?.edges?.[0]?.node || {}),
-    //);
-    console.log('📊 Timestamp:', new Date().toISOString());
-    console.log('📊 === END DATA CHANGE ===');
-  }, [data]);
+    logData(data);
+  }, [data, logData]);
 
   return (
     <CommandersPageShell
