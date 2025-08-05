@@ -65,44 +65,60 @@ const TopCommandersCard = React.memo(function TopCommandersCard({
   commander: pages_TopCommandersCard$key;
 }) {
   const commander = useFragment(
-    graphql`
-      fragment pages_TopCommandersCard on Commander {
-        name
-        colorId
-        breakdownUrl
-        stats {
-          conversionRate
-          topCuts
-          count
-          metaShare
-          topCutBias
-        }
+  graphql`
+fragment pages_TopCommandersCard on Commander {
+  name
+  colorId
+  breakdownUrl
+  stats {
+    conversionRate
+    topCuts
+    count
+    metaShare
+    topCutBias
+  }
+  cards {
+    imageUrls
+  }
+}
+  `,
+  props.commander,
+);
 
-        cards {
-          imageUrls
-        }
-      }
-    `,
-    props.commander,
-  );
+  console.log('🃏 Card Debug:', {
+    commander: commander,
+    commanderName: commander.name,
+    secondaryStatistic,
+  });
 
   const commanderStats = useMemo(() => {
-    const stats: string[] = [];
+  console.log('🃏 Card Stats Debug:', {
+    commanderName: commander.name,
+    secondaryStatistic,
+    stats: commander.stats
+  });
 
-    if (secondaryStatistic === 'count') {
-      stats.push(
-        `Meta Share: ${formatPercent(commander.stats.metaShare)}`,
-        `Entries: ${commander.stats.count}`,
-      );
-    } else if (secondaryStatistic === 'topCuts') {
-      stats.push(
-        `Conversion Rate: ${formatPercent(commander.stats.conversionRate)}`,
-        `Top Cuts: ${commander.stats.topCuts}`,
-      );
-    }
+  console.log('🔍 Raw stats from GraphQL:', commander.stats);
+console.log('🔍 Count should be 27 but is:', commander.stats.count);
+console.log('🔍 Meta share should change but is:', commander.stats.metaShare);
+  
+  const stats: string[] = [];
 
-    return stats.join(' / ');
-  }, [commander.stats, secondaryStatistic]);
+  if (secondaryStatistic === 'count') {
+    stats.push(
+      `Meta Share: ${formatPercent(commander.stats.metaShare)}`,
+      `Entries: ${commander.stats.count}`,
+    );
+  } else if (secondaryStatistic === 'topCuts') {
+    stats.push(
+      `Conversion Rate: ${formatPercent(commander.stats.conversionRate)}`,
+      `Top Cuts: ${commander.stats.topCuts}`,
+    );
+  }
+
+  console.log('🃏 Final stats string:', stats.join(' / '));
+  return stats.join(' / ');
+}, [commander.stats, secondaryStatistic]);
 
   // Memoize image data to prevent recalculation
   const images = useMemo(() => 
@@ -113,6 +129,8 @@ const TopCommandersCard = React.memo(function TopCommandersCard({
         alt: `${commander.name} card art`,
       }))
   , [commander.cards, commander.name]);
+
+  console.log(commanderStats);
 
   if (display === 'table') {
     return (
@@ -143,6 +161,7 @@ const TopCommandersCard = React.memo(function TopCommandersCard({
       </div>
     );
   }
+  
 
   return (
     <Card
@@ -474,48 +493,41 @@ export const CommandersPage: EntryPointComponent<
     timestamp: new Date().toISOString()
   });
   
-  const query = usePreloadedQuery(
-    graphql`
-      query pages_CommandersQuery(
-        $sortBy: CommandersSortBy = CONVERSION
-        $timePeriod: TimePeriod = ONE_MONTH
-      ) @preloadable {
-        ...pages_topCommanders
-          @arguments(sortBy: $sortBy, timePeriod: $timePeriod)
-      }
-    `,
-    queries.commandersQueryRef,
-  );
+const query = usePreloadedQuery(
+  graphql`
+    query pages_CommandersQuery @preloadable {
+  ...pages_topCommanders
+}
+  `,
+  queries.commandersQueryRef,
+);
 
   const {data, loadNext, isLoadingNext, hasNext, refetch} = usePaginationFragment<TopCommandersQuery, pages_topCommanders$key>(
-    graphql`
-      fragment pages_topCommanders on Query
-      @argumentDefinitions(
-        cursor: {type: "String"}
-        count: {type: "Int", defaultValue: 48}
-        sortBy: {type: "CommandersSortBy", defaultValue: CONVERSION}
-        timePeriod: {type: "TimePeriod", defaultValue: ONE_MONTH}
-      )
-      @refetchable(queryName: "TopCommandersQuery") {
-        commanders(
-          first: $count
-          after: $cursor
-          sortBy: $sortBy
-          timePeriod: $timePeriod
-        ) @connection(key: "pages__commanders") {
-          edges {
-            node {
-              id
-              ...pages_TopCommandersCard
-            }
-          }
-        }
+  graphql`
+    fragment pages_topCommanders on Query
+@argumentDefinitions(
+  cursor: {type: "String"}
+  count: {type: "Int", defaultValue: 48}
+)
+@refetchable(queryName: "TopCommandersQuery") {
+  commanders(
+    first: $count
+    after: $cursor
+  ) @connection(key: "pages__commanders") {
+    edges {
+      node {
+        id
+        ...pages_TopCommandersCard
       }
-    `,
-    query,
-  );
+    }
+  }
+}
+  `,
+  query,
+);
 
-  console.log('🎭 [DATA] Received commanders data - count:', data.commanders.edges.length);
+console.log('🔍 Fragment data:', data);
+console.log('🔍 First commander node:', data.commanders.edges[0]?.node);
 
   const display = useMemo(() => {
     const result = isHydrated ? (effectivePreferences.display || 'card') : 'card';
@@ -532,8 +544,12 @@ const handleRefetch = useCallback((currentPrefs?: CommanderPreferences) => {
   console.log('🔄 REFETCH TRIGGERED FROM CALLBACK');
   startTransition(() => {
     refetch({
-      sortBy: (effectivePreferences.sortBy as CommandersSortBy) || 'CONVERSION',
-      timePeriod: (effectivePreferences.timePeriod as TimePeriod) || 'ONE_MONTH',
+      sortBy: (currentPrefs?.sortBy as CommandersSortBy) || (effectivePreferences.sortBy as CommandersSortBy) || 'CONVERSION',
+      timePeriod: (currentPrefs?.timePeriod as TimePeriod) || (effectivePreferences.timePeriod as TimePeriod) || 'ONE_MONTH',
+      // Remove these lines for now:
+      // minEntries: currentPrefs?.minEntries || effectivePreferences.minEntries || null,
+      // minTournamentSize: currentPrefs?.minTournamentSize || effectivePreferences.minTournamentSize || null,
+      // colorId: currentPrefs?.colorId || effectivePreferences.colorId || null,
     }, {
       fetchPolicy: 'network-only',
     });
@@ -554,11 +570,30 @@ const handleRefetch = useCallback((currentPrefs?: CommanderPreferences) => {
     };
   }, [handleRefetch]);
 
-  useEffect(() => {
-    if (isHydrated) {
-      console.log('🎭 [HYDRATED] Component fully hydrated, preferences:', effectivePreferences);
+useEffect(() => {
+  if (isHydrated) {
+    const serverSortBy = 'CONVERSION';
+    const clientSortBy = effectivePreferences.sortBy;
+    
+    if (clientSortBy !== serverSortBy) {
+      console.log('🔄 ABOUT TO REFETCH - Client preferences differ from server');
+      console.log('🔄 Server used:', serverSortBy);
+      console.log('🔄 Client wants:', clientSortBy);
+      
+      startTransition(() => {
+        console.log('🔄 CALLING REFETCH NOW with:', {
+          sortBy: clientSortBy,
+          timePeriod: effectivePreferences.timePeriod,
+        });
+        
+        refetch({
+          sortBy: clientSortBy as CommandersSortBy,
+          timePeriod: effectivePreferences.timePeriod as TimePeriod,
+        });
+      });
     }
-  }, [isHydrated, effectivePreferences]);
+  }
+}, [isHydrated, effectivePreferences.sortBy, effectivePreferences.timePeriod, refetch]);
 
   // Memoize the debounced logging function
   const logData = useMemo(
@@ -575,9 +610,17 @@ const handleRefetch = useCallback((currentPrefs?: CommanderPreferences) => {
     logData(data);
   }, [data, logData]);
 
-  const secondaryStatistic = effectivePreferences.sortBy === 'CONVERSION' || effectivePreferences.sortBy === 'TOP_CUTS'
-    ? 'topCuts'
-    : 'count';
+const secondaryStatistic = useMemo(() => {
+  switch (effectivePreferences.sortBy) {
+    case 'CONVERSION':
+      return 'topCuts'; // Show conversion stats when sorting by conversion
+    case 'POPULARITY':
+    default:
+      return 'count';   // Show popularity stats when sorting by popularity
+  }
+}, [effectivePreferences.sortBy]);
+
+  
 
   return (
     <CommandersPageShell

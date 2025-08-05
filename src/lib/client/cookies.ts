@@ -9,15 +9,9 @@ let globalServerPreferences: CommanderPreferences | null = null;
 let hasInitializedFromServer = false;
 
 function getServerPreferences(): CommanderPreferences {
-  // If we already read server preferences, return cached version
-  if (hasInitializedFromServer && globalServerPreferences) {
-    console.log('🍪 [CACHE] Using cached server preferences:', globalServerPreferences);
-    return globalServerPreferences;
-  }
-
   console.log('🍪 [INIT] Starting preference initialization...');
   
-  // Remove typeof document check - handle gracefully instead
+  // Remove global caching - read fresh each time
   try {
     const metaTag = document?.querySelector('meta[name="commander-preferences"]');
     if (metaTag) {
@@ -28,13 +22,8 @@ function getServerPreferences(): CommanderPreferences {
         const serverPrefs = JSON.parse(decodeURIComponent(content));
         console.log('🍪 [INIT] ✅ Using server preferences:', serverPrefs);
         
-        // Cache globally and mark as initialized
-        globalServerPreferences = serverPrefs;
-        hasInitializedFromServer = true;
-        
-        // Remove meta tag since we've read it
         metaTag.remove();
-        console.log('🍪 [INIT] Meta tag removed and preferences cached globally');
+        console.log('🍪 [INIT] Meta tag removed');
         
         return serverPrefs;
       }
@@ -42,13 +31,10 @@ function getServerPreferences(): CommanderPreferences {
       console.log('🍪 [INIT] No meta tag found - will use defaults');
     }
   } catch (error) {
-    // Silently handle server-side errors where document doesn't exist
     console.log('🍪 [INIT] Document not available (SSR) - using defaults');
   }
   
   console.log('🍪 [INIT] Using defaults:', DEFAULT_PREFERENCES);
-  hasInitializedFromServer = true;
-  globalServerPreferences = DEFAULT_PREFERENCES;
   return DEFAULT_PREFERENCES;
 }
 

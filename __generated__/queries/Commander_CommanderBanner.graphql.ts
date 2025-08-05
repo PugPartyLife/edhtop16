@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ded9fcd937e01cd0f8804dd2fe756e71>>
+ * @generated SignedSource<<38e4a22d5a62d5a47b94b9df24344e40>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -31,16 +31,7 @@ export type Commander_CommanderBanner$key = {
 };
 
 const node: ReaderFragment = {
-  "argumentDefinitions": [
-    {
-      "kind": "RootArgument",
-      "name": "minEventSize"
-    },
-    {
-      "kind": "RootArgument",
-      "name": "timePeriod"
-    }
-  ],
+  "argumentDefinitions": [],
   "kind": "Fragment",
   "metadata": null,
   "name": "Commander_CommanderBanner",
@@ -79,24 +70,7 @@ const node: ReaderFragment = {
     },
     {
       "alias": null,
-      "args": [
-        {
-          "fields": [
-            {
-              "kind": "Variable",
-              "name": "minSize",
-              "variableName": "minEventSize"
-            },
-            {
-              "kind": "Variable",
-              "name": "timePeriod",
-              "variableName": "timePeriod"
-            }
-          ],
-          "kind": "ObjectValue",
-          "name": "filters"
-        }
-      ],
+      "args": null,
       "concreteType": "CommanderStats",
       "kind": "LinkedField",
       "name": "stats",
@@ -113,7 +87,7 @@ const node: ReaderFragment = {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "metaShare",
+          "name": "topCuts",
           "storageKey": null
         },
         {
@@ -127,7 +101,7 @@ const node: ReaderFragment = {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "topCuts",
+          "name": "metaShare",
           "storageKey": null
         },
         {
@@ -145,6 +119,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "5e203ca776d6c37107567128263bd501";
+(node as any).hash = "eb1605d9afa2ed36f6f105c60e09b205";
 
 export default node;

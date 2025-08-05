@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<a2b3560e99391bae45ad5d4d95a51b5d>>
- * @relayHash 68a82b959b1d98f76f1677e2fab658dd
+ * @generated SignedSource<<b8d564215eb9dcdb2770df108e06ec42>>
+ * @relayHash 9d72524a09de09094912b3118494fc6a
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,16 +9,11 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 68a82b959b1d98f76f1677e2fab658dd
+// @relayRequestID 9d72524a09de09094912b3118494fc6a
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type CommandersSortBy = "CONVERSION" | "POPULARITY" | "TOP_CUTS" | "%future added value";
-export type TimePeriod = "ALL_TIME" | "ONE_MONTH" | "ONE_YEAR" | "POST_BAN" | "SIX_MONTHS" | "THREE_MONTHS" | "%future added value";
-export type pages_CommandersQuery$variables = {
-  sortBy?: CommandersSortBy | null | undefined;
-  timePeriod?: TimePeriod | null | undefined;
-};
+export type pages_CommandersQuery$variables = Record<PropertyKey, never>;
 export type pages_CommandersQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"pages_topCommanders">;
 };
@@ -30,36 +25,12 @@ export type pages_CommandersQuery = {
 const node: ConcreteRequest = (function(){
 var v0 = [
   {
-    "defaultValue": "CONVERSION",
-    "kind": "LocalArgument",
-    "name": "sortBy"
-  },
-  {
-    "defaultValue": "ONE_MONTH",
-    "kind": "LocalArgument",
-    "name": "timePeriod"
-  }
-],
-v1 = {
-  "kind": "Variable",
-  "name": "sortBy",
-  "variableName": "sortBy"
-},
-v2 = {
-  "kind": "Variable",
-  "name": "timePeriod",
-  "variableName": "timePeriod"
-},
-v3 = [
-  {
     "kind": "Literal",
     "name": "first",
     "value": 48
-  },
-  (v1/*: any*/),
-  (v2/*: any*/)
+  }
 ],
-v4 = {
+v1 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -68,16 +39,13 @@ v4 = {
 };
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
     "name": "pages_CommandersQuery",
     "selections": [
       {
-        "args": [
-          (v1/*: any*/),
-          (v2/*: any*/)
-        ],
+        "args": null,
         "kind": "FragmentSpread",
         "name": "pages_topCommanders"
       }
@@ -87,13 +55,13 @@ return {
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [],
     "kind": "Operation",
     "name": "pages_CommandersQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v3/*: any*/),
+        "args": (v0/*: any*/),
         "concreteType": "QueryCommandersConnection",
         "kind": "LinkedField",
         "name": "commanders",
@@ -115,7 +83,7 @@ return {
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v4/*: any*/),
+                  (v1/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -198,7 +166,7 @@ return {
                         "name": "imageUrls",
                         "storageKey": null
                       },
-                      (v4/*: any*/)
+                      (v1/*: any*/)
                     ],
                     "storageKey": null
                   },
@@ -248,15 +216,12 @@ return {
             "storageKey": null
           }
         ],
-        "storageKey": null
+        "storageKey": "commanders(first:48)"
       },
       {
         "alias": null,
-        "args": (v3/*: any*/),
-        "filters": [
-          "sortBy",
-          "timePeriod"
-        ],
+        "args": (v0/*: any*/),
+        "filters": null,
         "handle": "connection",
         "key": "pages__commanders",
         "kind": "LinkedHandle",
@@ -265,7 +230,7 @@ return {
     ]
   },
   "params": {
-    "id": "68a82b959b1d98f76f1677e2fab658dd",
+    "id": "9d72524a09de09094912b3118494fc6a",
     "metadata": {},
     "name": "pages_CommandersQuery",
     "operationKind": "query",
@@ -274,7 +239,7 @@ return {
 };
 })();
 
-(node as any).hash = "aeeda10eeddc11c391a02afbf67fd392";
+(node as any).hash = "bb01a86f28f0bfa55a6d2f893ee9a66b";
 
 import { PreloadableQueryRegistry } from 'relay-runtime';
 PreloadableQueryRegistry.set(node.params.id, node);

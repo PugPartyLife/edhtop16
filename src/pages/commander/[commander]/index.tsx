@@ -147,13 +147,13 @@ function CommanderBanner(props: {commander: Commander_CommanderBanner$key}) {
           imageUrls
         }
 
-        stats(filters: {timePeriod: $timePeriod, minSize: $minEventSize}) {
-          conversionRate
-          metaShare
-          count
-          topCuts
-          topCutBias
-        }
+        stats {
+  conversionRate
+  topCuts
+  count
+  metaShare
+  topCutBias
+}
       }
     `,
     props.commander,

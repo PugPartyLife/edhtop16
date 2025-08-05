@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a4df78d76c9d5cd58567e13d635969ba>>
+ * @generated SignedSource<<c40598cc7e3b5b3f892e869d5789bf8c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -43,16 +43,6 @@ return {
       "defaultValue": null,
       "kind": "LocalArgument",
       "name": "cursor"
-    },
-    {
-      "defaultValue": "CONVERSION",
-      "kind": "LocalArgument",
-      "name": "sortBy"
-    },
-    {
-      "defaultValue": "ONE_MONTH",
-      "kind": "LocalArgument",
-      "name": "timePeriod"
     }
   ],
   "kind": "Fragment",
@@ -82,18 +72,7 @@ return {
   "selections": [
     {
       "alias": "commanders",
-      "args": [
-        {
-          "kind": "Variable",
-          "name": "sortBy",
-          "variableName": "sortBy"
-        },
-        {
-          "kind": "Variable",
-          "name": "timePeriod",
-          "variableName": "timePeriod"
-        }
-      ],
+      "args": null,
       "concreteType": "QueryCommandersConnection",
       "kind": "LinkedField",
       "name": "__pages__commanders_connection",
@@ -181,6 +160,6 @@ return {
 };
 })();
 
-(node as any).hash = "2fb7df97aa4ec7dfcd1ef9ce2223abab";
+(node as any).hash = "a17a33b082d674abd9cbc8b8973c7802";
 
 export default node;

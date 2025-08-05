@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<65584d251dcfdd0953de0658f571581d>>
- * @relayHash 86e691238053ab2ad12059a3905ca32b
+ * @generated SignedSource<<8e02fc0369b72545a8289bd83953a58d>>
+ * @relayHash 6a18754987f360dd73ebde876b432f01
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,17 +9,13 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 86e691238053ab2ad12059a3905ca32b
+// @relayRequestID 6a18754987f360dd73ebde876b432f01
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type CommandersSortBy = "CONVERSION" | "POPULARITY" | "TOP_CUTS" | "%future added value";
-export type TimePeriod = "ALL_TIME" | "ONE_MONTH" | "ONE_YEAR" | "POST_BAN" | "SIX_MONTHS" | "THREE_MONTHS" | "%future added value";
 export type TopCommandersQuery$variables = {
   count?: number | null | undefined;
   cursor?: string | null | undefined;
-  sortBy?: CommandersSortBy | null | undefined;
-  timePeriod?: TimePeriod | null | undefined;
 };
 export type TopCommandersQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"pages_topCommanders">;
@@ -40,29 +36,9 @@ var v0 = [
     "defaultValue": null,
     "kind": "LocalArgument",
     "name": "cursor"
-  },
-  {
-    "defaultValue": "CONVERSION",
-    "kind": "LocalArgument",
-    "name": "sortBy"
-  },
-  {
-    "defaultValue": "ONE_MONTH",
-    "kind": "LocalArgument",
-    "name": "timePeriod"
   }
 ],
-v1 = {
-  "kind": "Variable",
-  "name": "sortBy",
-  "variableName": "sortBy"
-},
-v2 = {
-  "kind": "Variable",
-  "name": "timePeriod",
-  "variableName": "timePeriod"
-},
-v3 = [
+v1 = [
   {
     "kind": "Variable",
     "name": "after",
@@ -72,11 +48,9 @@ v3 = [
     "kind": "Variable",
     "name": "first",
     "variableName": "count"
-  },
-  (v1/*: any*/),
-  (v2/*: any*/)
+  }
 ],
-v4 = {
+v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -101,9 +75,7 @@ return {
             "kind": "Variable",
             "name": "cursor",
             "variableName": "cursor"
-          },
-          (v1/*: any*/),
-          (v2/*: any*/)
+          }
         ],
         "kind": "FragmentSpread",
         "name": "pages_topCommanders"
@@ -120,7 +92,7 @@ return {
     "selections": [
       {
         "alias": null,
-        "args": (v3/*: any*/),
+        "args": (v1/*: any*/),
         "concreteType": "QueryCommandersConnection",
         "kind": "LinkedField",
         "name": "commanders",
@@ -142,7 +114,7 @@ return {
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v4/*: any*/),
+                  (v2/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -225,7 +197,7 @@ return {
                         "name": "imageUrls",
                         "storageKey": null
                       },
-                      (v4/*: any*/)
+                      (v2/*: any*/)
                     ],
                     "storageKey": null
                   },
@@ -279,11 +251,8 @@ return {
       },
       {
         "alias": null,
-        "args": (v3/*: any*/),
-        "filters": [
-          "sortBy",
-          "timePeriod"
-        ],
+        "args": (v1/*: any*/),
+        "filters": null,
         "handle": "connection",
         "key": "pages__commanders",
         "kind": "LinkedHandle",
@@ -292,7 +261,7 @@ return {
     ]
   },
   "params": {
-    "id": "86e691238053ab2ad12059a3905ca32b",
+    "id": "6a18754987f360dd73ebde876b432f01",
     "metadata": {},
     "name": "TopCommandersQuery",
     "operationKind": "query",
@@ -301,6 +270,6 @@ return {
 };
 })();
 
-(node as any).hash = "2fb7df97aa4ec7dfcd1ef9ce2223abab";
+(node as any).hash = "a17a33b082d674abd9cbc8b8973c7802";
 
 export default node;

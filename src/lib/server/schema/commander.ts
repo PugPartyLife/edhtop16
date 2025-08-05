@@ -100,6 +100,104 @@ Commander.implement({
     breakdownUrl: t.string({
       resolve: (parent) => `/commander/${encodeURIComponent(parent.name)}`,
     }),
+    stats: t.loadable({
+      type: CommanderStats,
+      byPath: true,
+      resolve: (parent) => parent.id,
+      load: async (commanderIds: number[], ctx) => {
+        // Use the same parameters from the context that the commanders query used
+        const sortBy = ctx.commanderPreferences.sortBy ?? 'CONVERSION';
+        const timePeriod = (ctx.commanderPreferences.timePeriod ?? 'ONE_MONTH') as TimePeriodType;
+        const minEntries = ctx.commanderPreferences.minEntries ?? 0;
+        const minTournamentSize = ctx.commanderPreferences.minTournamentSize ?? 0;
+        const colorId = ctx.commanderPreferences.colorId;
+
+        const minDate = minDateFromTimePeriod(timePeriod);
+        const minTournamentSizeValue = minTournamentSize || 0;
+
+        const [entriesQuery, statsQuery] = await Promise.all([
+          db
+            .selectFrom('Entry')
+            .select((eb) => eb.fn.countAll<number>().as('totalEntries'))
+            .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
+            .where('Tournament.size', '>=', minTournamentSizeValue)
+            .where('Tournament.tournamentDate', '>=', minDate.toISOString())
+            .executeTakeFirstOrThrow(),
+          db
+            .selectFrom('Commander')
+            .leftJoin('Entry', 'Entry.commanderId', 'Commander.id')
+            .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
+            .select([
+              'Commander.id',
+              'Commander.name',
+              'Commander.colorId',
+              (eb) => eb.fn.count<number>('Commander.id').as('count'),
+              (eb) =>
+                eb.fn
+                  .sum<number>(
+                    eb(
+                      eb.cast(eb.ref('Tournament.topCut'), 'real'),
+                      '/',
+                      eb.cast(eb.ref('Tournament.size'), 'real'),
+                    ),
+                  )
+                  .as('topCutBias'),
+              (eb) =>
+                eb.fn
+                  .sum<number>(
+                    eb
+                      .case()
+                      .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
+                      .then(1)
+                      .else(0)
+                      .end(),
+                  )
+                  .as('topCuts'),
+              (eb) =>
+                eb(
+                  eb.cast<number>(
+                    eb.fn.sum<number>(
+                      eb
+                        .case()
+                        .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
+                        .then(1)
+                        .else(0)
+                        .end(),
+                    ),
+                    'real',
+                  ),
+                  '/',
+                  eb.fn.count<number>('Entry.id'),
+                ).as('conversionRate'),
+            ])
+            .where('Tournament.size', '>=', minTournamentSizeValue)
+            .where('Tournament.tournamentDate', '>=', minDate.toISOString())
+            .where('Commander.id', 'in', commanderIds)
+            .groupBy('Commander.id')
+            .execute(),
+        ]);
+
+        const totalEntries = entriesQuery.totalEntries ?? 1;
+        const statsByCommanderId = new Map<number, CommanderCalculatedStats>();
+        for (const {id, ...stats} of statsQuery) {
+          statsByCommanderId.set(id, {
+            ...stats,
+            metaShare: stats.count / totalEntries,
+          });
+        }
+
+        return commanderIds.map(
+          (id) =>
+            statsByCommanderId.get(id) ?? {
+              topCuts: 0,
+              topCutBias: 0,
+              conversionRate: 0,
+              count: 0,
+              metaShare: 0,
+            },
+        );
+      },
+    }),
     entries: t.connection({
       type: Entry,
       args: {
@@ -448,106 +546,4 @@ const CommanderStats = builder
     }),
   });
 
-builder.objectField(Commander, 'stats', (t) =>
-  t.loadable({
-    type: CommanderStats,
-    byPath: true,
-    args: {filters: t.arg({type: CommanderStatsFilters})},
-    resolve: (parent) => parent.id,
-    load: async (commanderIds: number[], _ctx, {filters}) => {
-      const minSize = filters?.minSize ?? 0;
-      const maxSize = filters?.maxSize ?? 1_000_000;
-      const maxDate = filters?.maxDate ? new Date(filters.maxDate) : new Date();
-      const minDate =
-        filters?.minDate != null
-          ? new Date(filters?.minDate ?? 0)
-          : minDateFromTimePeriod(filters?.timePeriod);
 
-      const [entriesQuery, statsQuery] = await Promise.all([
-        db
-          .selectFrom('Entry')
-          .select((eb) => eb.fn.countAll<number>().as('totalEntries'))
-          .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
-          .where('Tournament.size', '>=', minSize)
-          .where('Tournament.size', '<=', maxSize)
-          .where('Tournament.tournamentDate', '>=', minDate.toISOString())
-          .where('Tournament.tournamentDate', '<=', maxDate.toISOString())
-          .executeTakeFirstOrThrow(),
-        db
-          .selectFrom('Commander')
-          .leftJoin('Entry', 'Entry.commanderId', 'Commander.id')
-          .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
-          .select([
-            'Commander.id',
-            'Commander.name',
-            'Commander.colorId',
-            (eb) => eb.fn.count<number>('Commander.id').as('count'),
-            (eb) =>
-              eb.fn
-                .sum<number>(
-                  eb(
-                    eb.cast(eb.ref('Tournament.topCut'), 'real'),
-                    '/',
-                    eb.cast(eb.ref('Tournament.size'), 'real'),
-                  ),
-                )
-                .as('topCutBias'),
-            (eb) =>
-              eb.fn
-                .sum<number>(
-                  eb
-                    .case()
-                    .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
-                    .then(1)
-                    .else(0)
-                    .end(),
-                )
-                .as('topCuts'),
-            (eb) =>
-              eb(
-                eb.cast<number>(
-                  eb.fn.sum<number>(
-                    eb
-                      .case()
-                      .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
-                      .then(1)
-                      .else(0)
-                      .end(),
-                  ),
-                  'real',
-                ),
-                '/',
-                eb.fn.count<number>('Entry.id'),
-              ).as('conversionRate'),
-          ])
-          .where('Tournament.size', '>=', minSize)
-          .where('Tournament.size', '<=', maxSize)
-          .where('Tournament.tournamentDate', '>=', minDate.toISOString())
-          .where('Tournament.tournamentDate', '<=', maxDate.toISOString())
-          .where('Commander.id', 'in', commanderIds)
-          .groupBy('Commander.id')
-          .execute(),
-      ]);
-
-      const totalEntries = entriesQuery.totalEntries ?? 1;
-      const statsByCommanderId = new Map<number, CommanderCalculatedStats>();
-      for (const {id, ...stats} of statsQuery) {
-        statsByCommanderId.set(id, {
-          ...stats,
-          metaShare: stats.count / totalEntries,
-        });
-      }
-
-      return commanderIds.map(
-        (id) =>
-          statsByCommanderId.get(id) ?? {
-            topCuts: 0,
-            topCutBias: 0,
-            conversionRate: 0,
-            count: 0,
-            metaShare: 0,
-          },
-      );
-    },
-  }),
-);
