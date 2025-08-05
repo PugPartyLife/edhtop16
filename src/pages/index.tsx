@@ -11,12 +11,13 @@ import RectangleStackIcon from '@heroicons/react/24/solid/RectangleStackIcon';
 import TableCellsIcon from '@heroicons/react/24/solid/TableCellsIcon';
 import {useSeoMeta} from '@unhead/react';
 import cn from 'classnames';
-import {
+import React, {
   PropsWithChildren,
   useCallback,
   useMemo,
   useState,
   useEffect,
+  startTransition,
   useRef,
 } from 'react';
 import {
@@ -30,6 +31,7 @@ import {
   useCommanderPreferences,
   setRefetchCallback,
   clearRefetchCallback,
+  CommanderPreferences
 } from '#src/lib/client/cookies';
 import {ColorIdentity} from '../assets/icons/colors';
 import {Card} from '../components/card';
@@ -162,6 +164,9 @@ function CommandersPageShell({
   colorId,
   minEntries,
   minTournamentSize,
+  display, 
+  updatePreference, 
+  preferences, 
   children,
 }: PropsWithChildren<{
   colorId: string;
@@ -169,14 +174,17 @@ function CommandersPageShell({
   minTournamentSize?: number | null;
   sortBy: CommandersSortBy;
   timePeriod: TimePeriod;
+  display: 'card' | 'table'; 
+  updatePreference: (key: keyof CommanderPreferences, value: any) => void; 
+  preferences: CommanderPreferences; 
 }>) {
   useSeoMeta({
     title: 'cEDH Commanders',
     description: 'Discover top performing commanders in cEDH!',
   });
 
-  const [display, toggleDisplay] = useCommandersDisplay();
-  const {preferences, updatePreference} = useCommanderPreferences();
+  console.log('🏠 Shell received display:', display);
+  console.log('🏠 Shell received preferences:', preferences);
 
   const [localMinEntries, setLocalMinEntries] = useState(
     minEntries?.toString() || '',
@@ -261,9 +269,9 @@ function CommandersPageShell({
   );
 
   const handleDisplayToggle = useCallback(() => {
-    const newDisplay = preferences.display === 'table' ? 'card' : 'table';
+    const newDisplay = display === 'table' ? 'card' : 'table';
     updatePreference('display', newDisplay);
-  }, [preferences.display, updatePreference]);
+  }, [display, updatePreference]);
 
   const handleEventSizeChange = useCallback(
     (value: string) => {
@@ -271,16 +279,6 @@ function CommandersPageShell({
       debouncedEventSizeUpdate(value);
     },
     [debouncedEventSizeUpdate],
-  );
-
-  const handleEventSizeSelect = useCallback(
-    (value: number | null) => {
-      const stringValue = value?.toString() || '';
-      setLocalEventSize(stringValue);
-      setOpenDropdown(null);
-      updatePreference('minTournamentSize', value);
-    },
-    [updatePreference],
   );
 
   const handleMinEntriesChange = useCallback(
@@ -294,9 +292,27 @@ function CommandersPageShell({
   const handleMinEntriesSelect = useCallback(
     (value: number | null) => {
       const stringValue = value?.toString() || '';
-      setLocalMinEntries(stringValue);
-      setOpenDropdown(null);
+      
+      startTransition(() => {
+        setLocalMinEntries(stringValue);
+        setOpenDropdown(null);
+      });
+      
       updatePreference('minEntries', value);
+    },
+    [updatePreference],
+  );
+
+  const handleEventSizeSelect = useCallback(
+    (value: number | null) => {
+      const stringValue = value?.toString() || '';
+      
+      startTransition(() => {
+        setLocalEventSize(stringValue);
+        setOpenDropdown(null);
+      });
+      
+      updatePreference('minTournamentSize', value);
     },
     [updatePreference],
   );
@@ -426,7 +442,7 @@ function CommandersPageShell({
   );
 }
 
-function useCommandersDisplay() {
+/*function useCommandersDisplay() {
   const {display} = useRouteParams('/');
   const {replaceRoute} = useNavigation();
 
@@ -437,7 +453,7 @@ function useCommandersDisplay() {
   return useMemo(() => {
     return [display === 'table' ? 'table' : 'card', toggleDisplay] as const;
   }, [display, toggleDisplay]);
-}
+}*/
 
 /** @resource m#index */
 export const CommandersPage: EntryPointComponent<
@@ -457,8 +473,25 @@ export const CommandersPage: EntryPointComponent<
     queries.commandersQueryRef,
   );
 
-  const [display] = useCommandersDisplay();
-  const {preferences} = useCommanderPreferences();
+
+  const {preferences, updatePreference} = useCommanderPreferences();
+  const preferencesRef = useRef(preferences);
+  const [displayOverride, setDisplayOverride] = useState<'card' | 'table' | null>(null);
+
+  useEffect(() => {
+    if (preferences.display && preferences.display !== displayOverride) {
+      console.log('🎭 Preferences updated, setting override:', preferences.display);
+      setDisplayOverride(preferences.display);
+    }
+  }, [preferences.display, displayOverride]);
+  
+  const display = displayOverride || preferences.display || 'card';
+  
+  console.log('🎭 Render with display:', display, {
+    override: displayOverride,
+    fromPrefs: preferences.display,
+    final: display
+  });
 
   const {data, loadNext, isLoadingNext, hasNext, refetch} =
     usePaginationFragment<TopCommandersQuery, pages_topCommanders$key>(
@@ -489,13 +522,23 @@ export const CommandersPage: EntryPointComponent<
       query,
     );
 
+   useEffect(() => {
+    preferencesRef.current = preferences;
+  }, [preferences]);
+
   useEffect(() => {
-    console.log('🔄 Setting up refetch callback');
+  console.log('🔄 Setting up refetch callback');
 
-    setRefetchCallback(() => {
-      console.log('🔄 REFETCH TRIGGERED FROM CALLBACK');
-      console.log('🔄 Current preferences at refetch time:', preferences);
+  setRefetchCallback((currentPrefs) => {
+    console.log('🔄 REFETCH TRIGGERED FROM CALLBACK');
+    console.log('🔄 Passed preferences:', currentPrefs);
+    console.log('🔄 Ref preferences:', preferencesRef.current);
+    
+   
+    const prefsToUse = currentPrefs || preferencesRef.current;
+    console.log('🔄 Using preferences for refetch:', prefsToUse);
 
+    startTransition(() => {
       refetch(
         {
           count: 48,
@@ -506,12 +549,13 @@ export const CommandersPage: EntryPointComponent<
         },
       );
     });
+  });
 
-    return () => {
-      console.log('🔄 Cleaning up refetch callback');
-      clearRefetchCallback();
-    };
-  }, [refetch, preferences]);
+  return () => {
+    console.log('🔄 Cleaning up refetch callback');
+    clearRefetchCallback();
+  };
+}, [refetch]);
 
   useEffect(() => {
     console.log('📊 === DATA CHANGED ===');
@@ -534,6 +578,9 @@ export const CommandersPage: EntryPointComponent<
       colorId={preferences.colorId || ''}
       minEntries={preferences.minEntries || null}
       minTournamentSize={preferences.minTournamentSize || null}
+      display={display}
+      updatePreference={updatePreference}
+      preferences={preferences}
     >
       <div
         className={cn(
@@ -572,7 +619,11 @@ export const CommandersPage: EntryPointComponent<
       <LoadMoreButton
         hasNext={hasNext}
         isLoadingNext={isLoadingNext}
-        loadNext={loadNext}
+        loadNext={(count) => {
+          startTransition(() => {
+            loadNext(count);
+          });
+        }}
       />
 
       <Footer />

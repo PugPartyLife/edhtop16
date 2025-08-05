@@ -32,9 +32,9 @@ function setCookie(name: string, value: string, days: number = 365) {
   document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`;
 }
 
-let refetchCallback: (() => void) | undefined = undefined;
+let refetchCallback: ((prefs?: CommanderPreferences) => void) | undefined = undefined;
 
-export function setRefetchCallback(callback?: () => void) {
+export function setRefetchCallback(callback?: (prefs?: CommanderPreferences) => void) {
   refetchCallback = callback;
 }
 
@@ -49,17 +49,11 @@ export function useCommanderPreferences() {
       if (cookieValue) {
         try {
           const savedPrefs = JSON.parse(decodeURIComponent(cookieValue));
-          console.log(
-            '🍪 Initial load: Found preferences in cookies:',
-            savedPrefs,
-          );
+          console.log('🍪 Initial load: Found preferences in cookies:', savedPrefs);
           updateRelayPreferences(savedPrefs);
           return savedPrefs;
         } catch (error) {
-          console.warn(
-            '❌ Initial load: Failed to parse preferences from cookies:',
-            error,
-          );
+          console.warn('❌ Initial load: Failed to parse preferences from cookies:', error);
         }
       }
     }
@@ -67,10 +61,10 @@ export function useCommanderPreferences() {
   });
 
   useEffect(() => {
-    console.log('🍪 useCommanderPreferences mounted with:', preferences);
-  }, []);
+    console.log('🍪 Preferences state changed:', preferences);
+  }, [preferences]);
 
-const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const updatePreference = useCallback((key: keyof CommanderPreferences, value: any) => {
     console.log('🍪 updatePreference called:', key, '=', value);
@@ -84,7 +78,8 @@ const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
         newPrefs[key] = value;
       }
       
-      console.log('🍪 New preferences object:', newPrefs);
+      console.log('🍪 Setting new preferences:', newPrefs);
+      console.log('🍪 Previous preferences:', prevPrefs);
       
       setCookie('commanderPreferences', JSON.stringify(newPrefs));
       updateRelayPreferences(newPrefs);
@@ -95,9 +90,9 @@ const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
       }
       
       refetchTimeoutRef.current = setTimeout(() => {
-        console.log('🍪 Triggering refetch after preference update');
+        console.log('🍪 Triggering refetch with immediate preferences:', newPrefs);
         if (refetchCallback) {
-          refetchCallback();
+          refetchCallback(newPrefs);
         }
         refetchTimeoutRef.current = null;
       }, 250);
