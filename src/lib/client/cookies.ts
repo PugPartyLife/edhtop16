@@ -43,22 +43,31 @@ export function clearRefetchCallback() {
 }
 
 export function useCommanderPreferences() {
-  const [preferences, setPreferences] = useState<CommanderPreferences>(() => {
+  const [preferences, setPreferences] = useState<CommanderPreferences>({
+    sortBy: 'CONVERSION',
+    timePeriod: 'ONE_MONTH',
+    display: 'card',
+  });
+
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+    
     if (typeof window !== 'undefined') {
       const cookieValue = getCookie('commanderPreferences');
       if (cookieValue) {
         try {
           const savedPrefs = JSON.parse(decodeURIComponent(cookieValue));
-//          console.log('🍪 Initial load: Found preferences in cookies:', savedPrefs);
+          console.log('🍪 Post-hydration: Found preferences in cookies:', savedPrefs);
+          setPreferences(savedPrefs);
           updateRelayPreferences(savedPrefs);
-          return savedPrefs;
         } catch (error) {
-//          console.warn('❌ Initial load: Failed to parse preferences from cookies:', error);
+          console.warn('❌ Post-hydration: Failed to parse preferences:', error);
         }
       }
     }
-    return {};
-  });
+  }, []);
 
   useEffect(() => {
     console.log('🍪 Preferences state changed:', preferences);
@@ -67,7 +76,6 @@ export function useCommanderPreferences() {
   const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const updatePreference = useCallback((key: keyof CommanderPreferences, value: any) => {
-    //console.log('🍪 updatePreference called:', key, '=', value);
     
     setPreferences(prevPrefs => {
       const newPrefs = { ...prevPrefs };
@@ -77,9 +85,6 @@ export function useCommanderPreferences() {
       } else {
         newPrefs[key] = value;
       }
-      
-      //console.log('🍪 Setting new preferences:', newPrefs);
-      //console.log('🍪 Previous preferences:', prevPrefs);
       
       setCookie('commanderPreferences', JSON.stringify(newPrefs));
       updateRelayPreferences(newPrefs);
