@@ -42,15 +42,22 @@ export function clearRefetchCallback() {
   refetchCallback = undefined;
 }
 
+const DEFAULT_PREFERENCES: CommanderPreferences = {
+  sortBy: 'CONVERSION',
+  timePeriod: 'ONE_MONTH',
+  display: 'card',
+  minEntries: 0,
+  minTournamentSize: 0,
+  colorId: '',
+};
+
 export function useCommanderPreferences() {
-  const [preferences, setPreferences] = useState<CommanderPreferences>({
-    sortBy: 'CONVERSION',
-    timePeriod: 'ONE_MONTH',
-    display: 'card',
-  });
-
+  // Always start with defaults to ensure server/client consistency
+  const [preferences, setPreferences] = useState<CommanderPreferences>(DEFAULT_PREFERENCES);
   const [isHydrated, setIsHydrated] = useState(false);
+  const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Hydrate preferences after client-side mount
   useEffect(() => {
     setIsHydrated(true);
     
@@ -60,11 +67,17 @@ export function useCommanderPreferences() {
         try {
           const savedPrefs = JSON.parse(decodeURIComponent(cookieValue));
           console.log('🍪 Post-hydration: Found preferences in cookies:', savedPrefs);
-          setPreferences(savedPrefs);
-          updateRelayPreferences(savedPrefs);
+          
+          // Merge with defaults to ensure all fields are present
+          const mergedPrefs = { ...DEFAULT_PREFERENCES, ...savedPrefs };
+          setPreferences(mergedPrefs);
+          updateRelayPreferences(mergedPrefs);
         } catch (error) {
           console.warn('❌ Post-hydration: Failed to parse preferences:', error);
         }
+      } else {
+        // No cookies found, but still update Relay with defaults
+        updateRelayPreferences(DEFAULT_PREFERENCES);
       }
     }
   }, []);
@@ -73,9 +86,8 @@ export function useCommanderPreferences() {
     console.log('🍪 Preferences state changed:', preferences);
   }, [preferences]);
 
-  const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const updatePreference = useCallback((key: keyof CommanderPreferences, value: any) => {
+    console.log('🍪 updatePreference called:', key, '=', value);
     
     setPreferences(prevPrefs => {
       const newPrefs = { ...prevPrefs };
@@ -85,6 +97,8 @@ export function useCommanderPreferences() {
       } else {
         newPrefs[key] = value;
       }
+      
+      console.log('🍪 Setting new preferences:', newPrefs);
       
       setCookie('commanderPreferences', JSON.stringify(newPrefs));
       updateRelayPreferences(newPrefs);
@@ -106,5 +120,5 @@ export function useCommanderPreferences() {
     });
   }, []);
 
-  return { preferences, updatePreference };
+  return { preferences, updatePreference, isHydrated };
 }
