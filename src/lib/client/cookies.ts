@@ -70,41 +70,44 @@ export function useCommanderPreferences() {
     console.log('🍪 useCommanderPreferences mounted with:', preferences);
   }, []);
 
-  const updatePreference = useCallback(
-    (key: keyof CommanderPreferences, value: any) => {
-      console.log('🍪 updatePreference called:', key, '=', value);
+const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-      setPreferences((prevPrefs) => {
-        const newPrefs = {...prevPrefs};
-
-        if (!value || value === '' || value === null) {
-          delete newPrefs[key];
-        } else {
-          newPrefs[key] = value;
+  const updatePreference = useCallback((key: keyof CommanderPreferences, value: any) => {
+    console.log('🍪 updatePreference called:', key, '=', value);
+    
+    setPreferences(prevPrefs => {
+      const newPrefs = { ...prevPrefs };
+      
+      if (!value || value === '' || value === null) {
+        delete newPrefs[key];
+      } else {
+        newPrefs[key] = value;
+      }
+      
+      console.log('🍪 New preferences object:', newPrefs);
+      
+      // Always update cookie and relay preferences immediately
+      setCookie('commanderPreferences', JSON.stringify(newPrefs));
+      updateRelayPreferences(newPrefs);
+      
+      // Clear existing refetch timeout
+      if (refetchTimeoutRef.current) {
+        clearTimeout(refetchTimeoutRef.current);
+        refetchTimeoutRef.current = null;
+      }
+      
+      // Schedule new refetch
+      refetchTimeoutRef.current = setTimeout(() => {
+        console.log('🍪 Triggering refetch after preference update');
+        if (refetchCallback) {
+          refetchCallback();
         }
+        refetchTimeoutRef.current = null;
+      }, 250); // Short delay to batch rapid changes
+      
+      return newPrefs;
+    });
+  }, []);
 
-        //console.log('🍪 New preferences object:', newPrefs);
-
-        setCookie('commanderPreferences', JSON.stringify(newPrefs));
-        updateRelayPreferences(newPrefs);
-
-        setTimeout(() => {
-          console.log('🍪 Triggering refetch from updatePreference');
-          if (refetchCallback) {
-            refetchCallback();
-          } else {
-            console.log('🍪 No refetch callback available');
-          }
-        }, 100);
-
-        return newPrefs;
-      });
-    },
-    [],
-  );
-
-  return {
-    preferences,
-    updatePreference,
-  };
+  return { preferences, updatePreference };
 }
