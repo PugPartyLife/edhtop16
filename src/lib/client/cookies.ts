@@ -49,11 +49,11 @@ export function useCommanderPreferences() {
       if (cookieValue) {
         try {
           const savedPrefs = JSON.parse(decodeURIComponent(cookieValue));
-          console.log('🍪 Initial load: Found preferences in cookies:', savedPrefs);
+//          console.log('🍪 Initial load: Found preferences in cookies:', savedPrefs);
           updateRelayPreferences(savedPrefs);
           return savedPrefs;
         } catch (error) {
-          console.warn('❌ Initial load: Failed to parse preferences from cookies:', error);
+//          console.warn('❌ Initial load: Failed to parse preferences from cookies:', error);
         }
       }
     }
@@ -67,7 +67,7 @@ export function useCommanderPreferences() {
   const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const updatePreference = useCallback((key: keyof CommanderPreferences, value: any) => {
-    console.log('🍪 updatePreference called:', key, '=', value);
+    //console.log('🍪 updatePreference called:', key, '=', value);
     
     setPreferences(prevPrefs => {
       const newPrefs = { ...prevPrefs };
@@ -78,8 +78,8 @@ export function useCommanderPreferences() {
         newPrefs[key] = value;
       }
       
-      console.log('🍪 Setting new preferences:', newPrefs);
-      console.log('🍪 Previous preferences:', prevPrefs);
+      //console.log('🍪 Setting new preferences:', newPrefs);
+      //console.log('🍪 Previous preferences:', prevPrefs);
       
       setCookie('commanderPreferences', JSON.stringify(newPrefs));
       updateRelayPreferences(newPrefs);

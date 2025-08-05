@@ -183,8 +183,8 @@ function CommandersPageShell({
     description: 'Discover top performing commanders in cEDH!',
   });
 
-  console.log('🏠 Shell received display:', display);
-  console.log('🏠 Shell received preferences:', preferences);
+  //console.log('🏠 Shell received display:', display);
+  //console.log('🏠 Shell received preferences:', preferences);
 
   const [localMinEntries, setLocalMinEntries] = useState(
     minEntries?.toString() || '',
@@ -480,7 +480,7 @@ export const CommandersPage: EntryPointComponent<
 
   useEffect(() => {
     if (preferences.display && preferences.display !== displayOverride) {
-      console.log('🎭 Preferences updated, setting override:', preferences.display);
+      //console.log('🎭 Preferences updated, setting override:', preferences.display);
       setDisplayOverride(preferences.display);
     }
   }, [preferences.display, displayOverride]);
@@ -527,16 +527,16 @@ export const CommandersPage: EntryPointComponent<
   }, [preferences]);
 
   useEffect(() => {
-  console.log('🔄 Setting up refetch callback');
+  //console.log('🔄 Setting up refetch callback');
 
   setRefetchCallback((currentPrefs) => {
-    console.log('🔄 REFETCH TRIGGERED FROM CALLBACK');
-    console.log('🔄 Passed preferences:', currentPrefs);
-    console.log('🔄 Ref preferences:', preferencesRef.current);
+    //console.log('🔄 REFETCH TRIGGERED FROM CALLBACK');
+    //console.log('🔄 Passed preferences:', currentPrefs);
+    //console.log('🔄 Ref preferences:', preferencesRef.current);
     
    
     const prefsToUse = currentPrefs || preferencesRef.current;
-    console.log('🔄 Using preferences for refetch:', prefsToUse);
+    //console.log('🔄 Using preferences for refetch:', prefsToUse);
 
     startTransition(() => {
       refetch(
@@ -552,21 +552,21 @@ export const CommandersPage: EntryPointComponent<
   });
 
   return () => {
-    console.log('🔄 Cleaning up refetch callback');
+    //console.log('🔄 Cleaning up refetch callback');
     clearRefetchCallback();
   };
 }, [refetch]);
 
   useEffect(() => {
     console.log('📊 === DATA CHANGED ===');
-    console.log('📊 Commander count:', data?.commanders?.edges?.length);
-    console.log('📊 Full data structure:', data);
-    console.log('📊 First edge:', data?.commanders?.edges?.[0]);
-    console.log('📊 First node:', data?.commanders?.edges?.[0]?.node);
-    console.log(
-      '📊 Available node fields:',
-      Object.keys(data?.commanders?.edges?.[0]?.node || {}),
-    );
+    //console.log('📊 Commander count:', data?.commanders?.edges?.length);
+    //console.log('📊 Full data structure:', data);
+    //console.log('📊 First edge:', data?.commanders?.edges?.[0]);
+    //console.log('📊 First node:', data?.commanders?.edges?.[0]?.node);
+    //console.log(
+    //  '📊 Available node fields:',
+    //  Object.keys(data?.commanders?.edges?.[0]?.node || {}),
+    //);
     console.log('📊 Timestamp:', new Date().toISOString());
     console.log('📊 === END DATA CHANGE ===');
   }, [data]);
