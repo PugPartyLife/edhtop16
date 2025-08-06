@@ -1,13 +1,60 @@
 import {useState, useEffect, useRef, useCallback} from 'react';
 import {updateRelayPreferences} from './relay_client_environment';
 
-let globalServerPreferences: CommanderPreferences | null = null;
-let hasInitializedFromServer = false;
+export interface CommanderPreferences {
+  sortBy?: 'CONVERSION' | 'POPULARITY';
+  timePeriod?: 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'ALL_TIME' | 'POST_BAN';
+  colorId?: string;
+  minEntries?: number;
+  minTournamentSize?: number;
+  display?: 'card' | 'table';
+}
+
+const DEFAULT_PREFERENCES: CommanderPreferences = {
+  sortBy: 'CONVERSION',
+  timePeriod: 'ONE_MONTH',
+  display: 'card',
+  minEntries: 0,
+  minTournamentSize: 0,
+  colorId: '',
+};
+
+let refetchCallback: ((prefs?: CommanderPreferences) => void) | undefined = undefined;
+
+export function setRefetchCallback(callback?: (prefs?: CommanderPreferences) => void) {
+  refetchCallback = callback;
+}
+
+export function clearRefetchCallback() {
+  refetchCallback = undefined;
+}
+
+function getCookie(name: string): string | null {
+  try {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      return parts.pop()?.split(';').shift() || null;
+    }
+  } catch (error) {
+    // Handle server-side gracefully
+  }
+  return null;
+}
+
+function setCookie(name: string, value: string, days: number = 365) {
+  try {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`;
+  } catch (error) {
+    // Handle server-side gracefully
+  }
+}
 
 function getServerPreferences(): CommanderPreferences {
   console.log('🍪 [INIT] Starting preference initialization...');
   
-  // Remove global caching - read fresh each time
   try {
     const metaTag = document?.querySelector('meta[name="commander-preferences"]');
     if (metaTag) {
@@ -34,66 +81,31 @@ function getServerPreferences(): CommanderPreferences {
   return DEFAULT_PREFERENCES;
 }
 
-export interface CommanderPreferences {
-  sortBy?: 'CONVERSION' | 'POPULARITY';
-  timePeriod?: 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'ALL_TIME' | 'POST_BAN';
-  colorId?: string;
-  minEntries?: number;
-  minTournamentSize?: number;
-  display?: 'card' | 'table';
-}
-
-function getCookie(name: string): string | null {
-  try {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) {
-      return parts.pop()?.split(';').shift() || null;
-    }
-  } catch (error) {
-    // Handle server-side gracefully
-  }
-  return null;
-}
-
-function setCookie(name: string, value: string, days: number = 365) {
-  try {
-    const expires = new Date();
-    expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`;
-  } catch (error) {
-    // Handle server-side gracefully
-  }
-}
-
-let refetchCallback: ((prefs?: CommanderPreferences) => void) | undefined = undefined;
-
-export function setRefetchCallback(callback?: (prefs?: CommanderPreferences) => void) {
-  refetchCallback = callback;
-}
-
-export function clearRefetchCallback() {
-  refetchCallback = undefined;
-}
-
-const DEFAULT_PREFERENCES: CommanderPreferences = {
-  sortBy: 'CONVERSION',
-  timePeriod: 'ONE_MONTH',
-  display: 'card',
-  minEntries: 0,
-  minTournamentSize: 0,
-  colorId: '',
-};
+// Track if we've already initialized to prevent double calls
+let hasInitialized = false;
 
 export function useCommanderPreferences() {
-  const [preferences, setPreferences] = useState<CommanderPreferences>(getServerPreferences);
+  const [preferences, setPreferences] = useState<CommanderPreferences>(() => {
+    // Only initialize once
+    if (hasInitialized) {
+      return DEFAULT_PREFERENCES;
+    }
+    hasInitialized = true;
+    return getServerPreferences();
+  });
+  
   const [isHydrated, setIsHydrated] = useState(false);
   const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasHydratedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent double hydration
+    if (hasHydratedRef.current) return;
+    hasHydratedRef.current = true;
+    
     setIsHydrated(true);
     
-    // Only read from cookies if we're still using defaults (no server preferences found)
+    // Check if we need to load from cookies
     const isUsingDefaults = JSON.stringify(preferences) === JSON.stringify(DEFAULT_PREFERENCES);
     
     if (isUsingDefaults) {
@@ -108,20 +120,17 @@ export function useCommanderPreferences() {
           updateRelayPreferences(mergedPrefs);
         } catch (error) {
           console.warn('❌ Post-hydration: Failed to parse preferences:', error);
+          updateRelayPreferences(DEFAULT_PREFERENCES);
         }
       } else {
+        console.log('🍪 Post-hydration: No cookies found, using defaults');
         updateRelayPreferences(DEFAULT_PREFERENCES);
       }
     } else {
-      // We already have server preferences, just update Relay
-      console.log('🍪 Using server preferences, updating Relay:', preferences);
+      console.log('🍪 Post-hydration: Using server preferences:', preferences);
       updateRelayPreferences(preferences);
     }
-  }, []); // No dependencies to avoid loops
-
-  useEffect(() => {
-    console.log('🍪 Preferences state changed:', preferences);
-  }, [preferences]);
+  }, []); // Empty dependency array
 
   const updatePreference = useCallback((key: keyof CommanderPreferences, value: any) => {
     console.log('🍪 updatePreference called:', key, '=', value);
@@ -140,13 +149,15 @@ export function useCommanderPreferences() {
       setCookie('commanderPreferences', JSON.stringify(newPrefs));
       updateRelayPreferences(newPrefs);
       
+      // Clear existing timeout
       if (refetchTimeoutRef.current) {
         clearTimeout(refetchTimeoutRef.current);
         refetchTimeoutRef.current = null;
       }
       
+      // Debounce refetch calls
       refetchTimeoutRef.current = setTimeout(() => {
-        console.log('🍪 Triggering refetch with immediate preferences:', newPrefs);
+        console.log('🍪 Triggering refetch after preference change');
         if (refetchCallback) {
           refetchCallback(newPrefs);
         }

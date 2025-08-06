@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<63d8a7b8eafc2b1de79e96973c4db333>>
+ * @generated SignedSource<<92bea4f40939baf4de4059a5ccfbbab7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,7 +21,6 @@ export type pages_TopCommandersCard$data = {
     readonly conversionRate: number;
     readonly count: number;
     readonly metaShare: number;
-    readonly topCutBias: number;
     readonly topCuts: number;
   };
   readonly " $fragmentType": "pages_TopCommandersCard";
@@ -93,13 +92,6 @@ const node: ReaderFragment = {
           "kind": "ScalarField",
           "name": "metaShare",
           "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "topCutBias",
-          "storageKey": null
         }
       ],
       "storageKey": null
@@ -127,6 +119,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "f332473336687aea48884775f8de9ff2";
+(node as any).hash = "a014218b1f281eee6c7456d02b367ab0";
 
 export default node;
