@@ -1,46 +1,23 @@
 import CommandersQueryParameters from '#genfiles/queries/pages_CommandersQuery$parameters';
-import {
-  CommandersSortBy,
-  TimePeriod,
-} from '#genfiles/queries/pages_CommandersQuery.graphql';
 import {JSResource, ModuleType} from '#genfiles/river/js_resource';
 import {EntryPointParams} from '#genfiles/river/router';
 import {EntryPoint} from 'react-relay/hooks';
 
 /**
  * @route /
- * @param {number?} minSize
- * @param {number?} minEntries
- * @param {string?} sortBy
- * @param {string?} timePeriod
- * @param {string?} colorId
- * @param {string?} display
  */
 export const entrypoint: EntryPoint<
   ModuleType<'m#index'>,
   EntryPointParams<'/'>
 > = {
   root: JSResource.fromModuleId('m#index'),
-  getPreloadProps({schema, params}) {
-    const {
-      sortBy = 'POPULARITY',
-      timePeriod = 'SIX_MONTHS',
-      minEntries,
-      minSize: minTournamentSize = 0,
-      colorId,
-    } = schema.parse(params);
-
+  getPreloadProps() {
+    // Your GraphQL query doesn't accept any variables, so pass an empty object
     return {
       queries: {
         commandersQueryRef: {
           parameters: CommandersQueryParameters,
-          variables: {
-            minEntries,
-            minTournamentSize,
-            colorId,
-            sortBy: sortBy as CommandersSortBy,
-            timePeriod: timePeriod as TimePeriod,
-          },
+          variables: {}, // Empty object - no variables needed
         },
       },
     };
