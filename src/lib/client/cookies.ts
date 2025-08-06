@@ -1,9 +1,5 @@
 import {useState, useEffect, useRef, useCallback} from 'react';
 import {updateRelayPreferences} from './relay_client_environment';
-import type {
-  CommandersSortBy,
-  TimePeriod,
-} from '#genfiles/queries/pages_CommandersQuery.graphql';
 
 let globalServerPreferences: CommanderPreferences | null = null;
 let hasInitializedFromServer = false;
@@ -39,8 +35,8 @@ function getServerPreferences(): CommanderPreferences {
 }
 
 export interface CommanderPreferences {
-  sortBy?: CommandersSortBy;
-  timePeriod?: TimePeriod;
+  sortBy?: 'CONVERSION' | 'POPULARITY';
+  timePeriod?: 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'ALL_TIME' | 'POST_BAN';
   colorId?: string;
   minEntries?: number;
   minTournamentSize?: number;

@@ -1,7 +1,5 @@
 import {
   pages_CommandersQuery,
-  CommandersSortBy,
-  TimePeriod,
 } from '#genfiles/queries/pages_CommandersQuery.graphql';
 import {pages_topCommanders$key} from '#genfiles/queries/pages_topCommanders.graphql';
 import {pages_TopCommandersCard$key} from '#genfiles/queries/pages_TopCommandersCard.graphql';
@@ -196,8 +194,8 @@ function CommandersPageShell({
   colorId: string;
   minEntries?: number | null;
   minTournamentSize?: number | null;
-  sortBy: CommandersSortBy;
-  timePeriod: TimePeriod;
+  sortBy: 'CONVERSION' | 'POPULARITY';  // ← Change this
+  timePeriod: 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'ALL_TIME' | 'POST_BAN';  // ← Change this
   display: 'card' | 'table'; 
   updatePreference: (key: keyof CommanderPreferences, value: any) => void; 
   preferences: CommanderPreferences; 
@@ -278,14 +276,14 @@ function CommandersPageShell({
   );
 
   const handleSortByChange = useCallback(
-    (value: CommandersSortBy) => {
+    (value: 'CONVERSION' | 'POPULARITY') => {  // ← Change this
       updatePreference('sortBy', value);
     },
     [updatePreference],
   );
 
   const handleTimePeriodChange = useCallback(
-    (value: TimePeriod) => {
+    (value: 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'ALL_TIME' | 'POST_BAN') => {  // ← Change this
       updatePreference('timePeriod', value);
     },
     [updatePreference],
@@ -375,12 +373,12 @@ function CommandersPageShell({
                     : 'Top Performing'
                 }
                 options={[
-                  {
-                    value: 'CONVERSION' as CommandersSortBy,
+                   {
+                    value: 'CONVERSION' as const,  // ← Add 'as const'
                     label: 'Top Performing',
                   },
                   {
-                    value: 'POPULARITY' as CommandersSortBy,
+                    value: 'POPULARITY' as const,  // ← Add 'as const'
                     label: 'Most Popular',
                   },
                 ]}
@@ -543,18 +541,11 @@ console.log('🔍 First commander node:', data.commanders.edges[0]?.node);
 const handleRefetch = useCallback((currentPrefs?: CommanderPreferences) => {
   console.log('🔄 REFETCH TRIGGERED FROM CALLBACK');
   startTransition(() => {
-    refetch({
-      sortBy: (currentPrefs?.sortBy as CommandersSortBy) || (effectivePreferences.sortBy as CommandersSortBy) || 'CONVERSION',
-      timePeriod: (currentPrefs?.timePeriod as TimePeriod) || (effectivePreferences.timePeriod as TimePeriod) || 'ONE_MONTH',
-      // Remove these lines for now:
-      // minEntries: currentPrefs?.minEntries || effectivePreferences.minEntries || null,
-      // minTournamentSize: currentPrefs?.minTournamentSize || effectivePreferences.minTournamentSize || null,
-      // colorId: currentPrefs?.colorId || effectivePreferences.colorId || null,
-    }, {
+    refetch({}, {
       fetchPolicy: 'network-only',
     });
   });
-}, [refetch, effectivePreferences]);
+}, [refetch]);
 
   // Memoize the load more handler
   const handleLoadMore = useCallback((count: number) => {
@@ -581,14 +572,10 @@ useEffect(() => {
       console.log('🔄 Client wants:', clientSortBy);
       
       startTransition(() => {
-        console.log('🔄 CALLING REFETCH NOW with:', {
-          sortBy: clientSortBy,
-          timePeriod: effectivePreferences.timePeriod,
-        });
+        console.log('🔄 CALLING REFETCH NOW');
         
-        refetch({
-          sortBy: clientSortBy as CommandersSortBy,
-          timePeriod: effectivePreferences.timePeriod as TimePeriod,
+        refetch({}, {
+          fetchPolicy: 'network-only',
         });
       });
     }
@@ -624,8 +611,8 @@ const secondaryStatistic = useMemo(() => {
 
   return (
     <CommandersPageShell
-      sortBy={(effectivePreferences.sortBy as CommandersSortBy) || 'CONVERSION'}
-      timePeriod={(effectivePreferences.timePeriod as TimePeriod) || 'ONE_MONTH'}
+      sortBy={effectivePreferences.sortBy || 'CONVERSION'}  // ← Remove casting
+      timePeriod={effectivePreferences.timePeriod || 'ONE_MONTH'}  // ← Remove casting
       colorId={effectivePreferences.colorId || ''}
       minEntries={effectivePreferences.minEntries || null}
       minTournamentSize={effectivePreferences.minTournamentSize || null}
