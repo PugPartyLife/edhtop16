@@ -313,6 +313,7 @@ const getTimePeriodLabel = (period: string) => {
   );
 }
 
+/** @resource m#index */
 export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_CommandersQuery}, {}> = ({queries}) => {
   const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
   const hasRefetchedRef = useRef(false);
