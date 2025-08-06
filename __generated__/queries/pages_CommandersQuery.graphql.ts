@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<b8d564215eb9dcdb2770df108e06ec42>>
- * @relayHash 9d72524a09de09094912b3118494fc6a
+ * @generated SignedSource<<4180498d1380e5347f36896d46439b85>>
+ * @relayHash 43b5843886ad3720cb9488d870fb9ba8
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 9d72524a09de09094912b3118494fc6a
+// @relayRequestID 43b5843886ad3720cb9488d870fb9ba8
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
@@ -27,7 +27,7 @@ var v0 = [
   {
     "kind": "Literal",
     "name": "first",
-    "value": 48
+    "value": 20
   }
 ],
 v1 = {
@@ -216,7 +216,7 @@ return {
             "storageKey": null
           }
         ],
-        "storageKey": "commanders(first:48)"
+        "storageKey": "commanders(first:20)"
       },
       {
         "alias": null,
@@ -230,7 +230,7 @@ return {
     ]
   },
   "params": {
-    "id": "9d72524a09de09094912b3118494fc6a",
+    "id": "43b5843886ad3720cb9488d870fb9ba8",
     "metadata": {},
     "name": "pages_CommandersQuery",
     "operationKind": "query",

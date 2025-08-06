@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<8e02fc0369b72545a8289bd83953a58d>>
- * @relayHash 6a18754987f360dd73ebde876b432f01
+ * @generated SignedSource<<eb6a2b3d6025d65572f2f7db226e2e4a>>
+ * @relayHash a59f5da4c0069f0034fd58a7bf1ac805
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 6a18754987f360dd73ebde876b432f01
+// @relayRequestID a59f5da4c0069f0034fd58a7bf1ac805
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
@@ -28,7 +28,7 @@ export type TopCommandersQuery = {
 const node: ConcreteRequest = (function(){
 var v0 = [
   {
-    "defaultValue": 48,
+    "defaultValue": 20,
     "kind": "LocalArgument",
     "name": "count"
   },
@@ -261,7 +261,7 @@ return {
     ]
   },
   "params": {
-    "id": "6a18754987f360dd73ebde876b432f01",
+    "id": "a59f5da4c0069f0034fd58a7bf1ac805",
     "metadata": {},
     "name": "TopCommandersQuery",
     "operationKind": "query",
@@ -270,6 +270,6 @@ return {
 };
 })();
 
-(node as any).hash = "a17a33b082d674abd9cbc8b8973c7802";
+(node as any).hash = "7196d3105a6fcc24d00413bb7af341ad";
 
 export default node;
