@@ -184,13 +184,13 @@ function CommandersPageShell({
       if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
         updatePreference('minEntries', numValue);
       }
-    }, 150),
+    }, 250),
     eventSize: debounce((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
       if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
         updatePreference('minTournamentSize', numValue);
       }
-    }, 150),
+    }, 250),
   }).current;
 
   useEffect(() => {
