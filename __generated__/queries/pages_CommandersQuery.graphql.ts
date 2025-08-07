@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<011aefdec93dc516cc29f8ae725a5766>>
- * @relayHash 02c6612a4f56165aa036a80398bfaf6b
+ * @generated SignedSource<<7fa002335392c9af10f4d9308b6bd578>>
+ * @relayHash deee1deaaebfa521b6dd5e7d4768b9b9
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,19 +9,11 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 02c6612a4f56165aa036a80398bfaf6b
+// @relayRequestID deee1deaaebfa521b6dd5e7d4768b9b9
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type CommandersSortBy = "CONVERSION" | "POPULARITY" | "TOP_CUTS" | "%future added value";
-export type TimePeriod = "ALL_TIME" | "ONE_MONTH" | "ONE_YEAR" | "POST_BAN" | "SIX_MONTHS" | "THREE_MONTHS" | "%future added value";
-export type pages_CommandersQuery$variables = {
-  colorId?: string | null | undefined;
-  minEntries?: number | null | undefined;
-  minTournamentSize: number;
-  sortBy: CommandersSortBy;
-  timePeriod: TimePeriod;
-};
+export type pages_CommandersQuery$variables = Record<PropertyKey, never>;
 export type pages_CommandersQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"pages_topCommanders">;
 };
@@ -31,65 +23,14 @@ export type pages_CommandersQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "colorId"
-},
-v1 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "minEntries"
-},
-v2 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "minTournamentSize"
-},
-v3 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "sortBy"
-},
-v4 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "timePeriod"
-},
-v5 = {
-  "kind": "Variable",
-  "name": "timePeriod",
-  "variableName": "timePeriod"
-},
-v6 = [
-  {
-    "kind": "Variable",
-    "name": "colorId",
-    "variableName": "colorId"
-  },
+var v0 = [
   {
     "kind": "Literal",
     "name": "first",
-    "value": 48
-  },
-  {
-    "kind": "Variable",
-    "name": "minEntries",
-    "variableName": "minEntries"
-  },
-  {
-    "kind": "Variable",
-    "name": "minTournamentSize",
-    "variableName": "minTournamentSize"
-  },
-  {
-    "kind": "Variable",
-    "name": "sortBy",
-    "variableName": "sortBy"
-  },
-  (v5/*: any*/)
+    "value": 20
+  }
 ],
-v7 = {
+v1 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -98,13 +39,7 @@ v7 = {
 };
 return {
   "fragment": {
-    "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/)
-    ],
+    "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
     "name": "pages_CommandersQuery",
@@ -120,19 +55,13 @@ return {
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": [
-      (v4/*: any*/),
-      (v3/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v0/*: any*/)
-    ],
+    "argumentDefinitions": [],
     "kind": "Operation",
     "name": "pages_CommandersQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v6/*: any*/),
+        "args": (v0/*: any*/),
         "concreteType": "QueryCommandersConnection",
         "kind": "LinkedField",
         "name": "commanders",
@@ -154,7 +83,7 @@ return {
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v7/*: any*/),
+                  (v1/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -178,20 +107,7 @@ return {
                   },
                   {
                     "alias": null,
-                    "args": [
-                      {
-                        "fields": [
-                          {
-                            "kind": "Variable",
-                            "name": "minSize",
-                            "variableName": "minTournamentSize"
-                          },
-                          (v5/*: any*/)
-                        ],
-                        "kind": "ObjectValue",
-                        "name": "filters"
-                      }
-                    ],
+                    "args": null,
                     "concreteType": "CommanderStats",
                     "kind": "LinkedField",
                     "name": "stats",
@@ -224,13 +140,6 @@ return {
                         "kind": "ScalarField",
                         "name": "metaShare",
                         "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "topCutBias",
-                        "storageKey": null
                       }
                     ],
                     "storageKey": null
@@ -250,7 +159,7 @@ return {
                         "name": "imageUrls",
                         "storageKey": null
                       },
-                      (v7/*: any*/)
+                      (v1/*: any*/)
                     ],
                     "storageKey": null
                   },
@@ -300,18 +209,12 @@ return {
             "storageKey": null
           }
         ],
-        "storageKey": null
+        "storageKey": "commanders(first:20)"
       },
       {
         "alias": null,
-        "args": (v6/*: any*/),
-        "filters": [
-          "timePeriod",
-          "sortBy",
-          "colorId",
-          "minEntries",
-          "minTournamentSize"
-        ],
+        "args": (v0/*: any*/),
+        "filters": null,
         "handle": "connection",
         "key": "pages__commanders",
         "kind": "LinkedHandle",
@@ -320,7 +223,7 @@ return {
     ]
   },
   "params": {
-    "id": "02c6612a4f56165aa036a80398bfaf6b",
+    "id": "deee1deaaebfa521b6dd5e7d4768b9b9",
     "metadata": {},
     "name": "pages_CommandersQuery",
     "operationKind": "query",
@@ -329,7 +232,7 @@ return {
 };
 })();
 
-(node as any).hash = "24fe27d06e769c9158d04264503cfb96";
+(node as any).hash = "bb01a86f28f0bfa55a6d2f893ee9a66b";
 
 import { PreloadableQueryRegistry } from 'relay-runtime';
 PreloadableQueryRegistry.set(node.params.id, node);

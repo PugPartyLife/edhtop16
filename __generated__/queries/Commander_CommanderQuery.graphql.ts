@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<649763c2eaac29a0e0252aa66f21047c>>
- * @relayHash d14bceddd8ad6f225207db2604c4f6b4
+ * @generated SignedSource<<1331694e56eec5eaa45a70707e7ec8a6>>
+ * @relayHash 5f07859698573f70090eee3c5f371ff5
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID d14bceddd8ad6f225207db2604c4f6b4
+// @relayRequestID 5f07859698573f70090eee3c5f371ff5
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
@@ -79,12 +79,7 @@ v7 = {
   "name": "id",
   "storageKey": null
 },
-v8 = {
-  "kind": "Variable",
-  "name": "timePeriod",
-  "variableName": "timePeriod"
-},
-v9 = [
+v8 = [
   {
     "fields": [
       {
@@ -97,7 +92,11 @@ v9 = [
         "name": "minEventSize",
         "variableName": "minEventSize"
       },
-      (v8/*: any*/)
+      {
+        "kind": "Variable",
+        "name": "timePeriod",
+        "variableName": "timePeriod"
+      }
     ],
     "kind": "ObjectValue",
     "name": "filters"
@@ -207,20 +206,7 @@ return {
           },
           {
             "alias": null,
-            "args": [
-              {
-                "fields": [
-                  {
-                    "kind": "Variable",
-                    "name": "minSize",
-                    "variableName": "minEventSize"
-                  },
-                  (v8/*: any*/)
-                ],
-                "kind": "ObjectValue",
-                "name": "filters"
-              }
-            ],
+            "args": null,
             "concreteType": "CommanderStats",
             "kind": "LinkedField",
             "name": "stats",
@@ -237,7 +223,7 @@ return {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
-                "name": "metaShare",
+                "name": "topCuts",
                 "storageKey": null
               },
               {
@@ -251,7 +237,7 @@ return {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
-                "name": "topCuts",
+                "name": "metaShare",
                 "storageKey": null
               },
               {
@@ -319,7 +305,7 @@ return {
           },
           {
             "alias": null,
-            "args": (v9/*: any*/),
+            "args": (v8/*: any*/),
             "concreteType": "CommanderEntriesConnection",
             "kind": "LinkedField",
             "name": "entries",
@@ -481,7 +467,7 @@ return {
           },
           {
             "alias": null,
-            "args": (v9/*: any*/),
+            "args": (v8/*: any*/),
             "filters": [
               "sortBy",
               "filters"
@@ -498,7 +484,7 @@ return {
     ]
   },
   "params": {
-    "id": "d14bceddd8ad6f225207db2604c4f6b4",
+    "id": "5f07859698573f70090eee3c5f371ff5",
     "metadata": {},
     "name": "Commander_CommanderQuery",
     "operationKind": "query",

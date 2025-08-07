@@ -13,7 +13,14 @@ import {Link, useNavigation} from '#genfiles/river/router';
 import {useSeoMeta} from '@unhead/react';
 import cn from 'classnames';
 import {format} from 'date-fns';
-import {PropsWithChildren, useState, useEffect, useCallback, startTransition} from 'react';
+import {
+  PropsWithChildren,
+  useState,
+  useEffect,
+  useCallback,
+  startTransition,
+  useMemo,
+} from 'react';
 import {
   EntryPointComponent,
   useFragment,
@@ -23,14 +30,19 @@ import {
 import {graphql} from 'relay-runtime';
 import {ColorIdentity} from '../../../assets/icons/colors';
 import {Card} from '../../../components/card';
+import {Dropdown} from '../../../components/dropdown';
 import {Footer} from '../../../components/footer';
 import {LoadMoreButton} from '../../../components/load_more';
 import {Navigation} from '../../../components/navigation';
+import {NumberInputDropdown} from '../../../components/number_input_dropdown';
 import {FirstPartyPromo} from '../../../components/promo';
 import {Select} from '../../../components/select';
 import {formatOrdinals, formatPercent} from '../../../lib/client/format';
 
-function debounce<T extends (...args: any[]) => any>(func: T, delay: number): T {
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number,
+): T {
   let timeoutId: NodeJS.Timeout;
   return ((...args: any[]) => {
     clearTimeout(timeoutId);
@@ -136,19 +148,17 @@ function CommanderBanner(props: {commander: Commander_CommanderBanner$key}) {
           imageUrls
         }
 
-        stats(filters: {timePeriod: $timePeriod, minSize: $minEventSize}) {
+        stats {
           conversionRate
-          metaShare
-          count
           topCuts
+          count
+          metaShare
           topCutBias
         }
       }
     `,
     props.commander,
   );
-
-  
 
   return (
     <div className="h-64 w-full bg-black/60 md:h-80">
@@ -192,7 +202,10 @@ function CommanderBanner(props: {commander: Commander_CommanderBanner$key}) {
           <div className="mr-1 ml-2 border-l border-white/60 py-2">
             &nbsp;
           </div>{' '}
-          {commander.stats.topCutBias > 0 ? (commander.stats.topCuts/commander.stats.topCutBias).toFixed(1) : '0.0'} Top Cut Bias
+          {commander.stats.topCutBias > 0
+            ? (commander.stats.topCuts / commander.stats.topCutBias).toFixed(1)
+            : '0.0'}{' '}
+          Top Cut Bias
         </div>
       </div>
     </div>
@@ -250,11 +263,13 @@ export function CommanderPageShell({
   useCommanderMeta(commander);
   const {replaceRoute} = useNavigation();
 
-  // Add local state for both input values
-  const [localEventSize, setLocalEventSize] = useState(minEventSize?.toString() || '');
-  const [localMaxStanding, setLocalMaxStanding] = useState(maxStanding?.toString() || '');
+  const [localEventSize, setLocalEventSize] = useState(
+    minEventSize?.toString() || '',
+  );
+  const [localMaxStanding, setLocalMaxStanding] = useState(
+    maxStanding?.toString() || '',
+  );
 
-  // Update local state when props change
   useEffect(() => {
     setLocalEventSize(minEventSize?.toString() || '');
   }, [minEventSize]);
@@ -263,47 +278,93 @@ export function CommanderPageShell({
     setLocalMaxStanding(maxStanding?.toString() || '');
   }, [maxStanding]);
 
-  // Create debounced route update function for event size
-  const debouncedEventSizeUpdate = useCallback(
-    debounce((value: string) => {
-      if (value === '') {
-        replaceRoute('/commander/:commander', {
-          commander: commander.name,
-          minEventSize: null,
-        });
-      } else {
-        const numValue = parseInt(value, 10);
-        if (!isNaN(numValue) && numValue >= 0) {
+  const debouncedEventSizeUpdate = useMemo(
+    () =>
+      debounce((value: string) => {
+        if (value === '') {
           replaceRoute('/commander/:commander', {
             commander: commander.name,
-            minEventSize: numValue,
+            minEventSize: null,
           });
+        } else {
+          const numValue = parseInt(value, 10);
+          if (!isNaN(numValue) && numValue >= 0) {
+            replaceRoute('/commander/:commander', {
+              commander: commander.name,
+              minEventSize: numValue,
+            });
+          }
         }
-      }
-    }, 300),
-    [commander.name, replaceRoute]
+      }, 300),
+    [commander.name, replaceRoute],
   );
 
-  // Create debounced route update function for max standing
-  const debouncedMaxStandingUpdate = useCallback(
-    debounce((value: string) => {
-      if (value === '') {
-        replaceRoute('/commander/:commander', {
-          commander: commander.name,
-          maxStanding: null,
-        });
-      } else {
-        const numValue = parseInt(value, 10);
-        if (!isNaN(numValue) && numValue >= 1) {
+  const debouncedMaxStandingUpdate = useMemo(
+    () =>
+      debounce((value: string) => {
+        if (value === '') {
           replaceRoute('/commander/:commander', {
             commander: commander.name,
-            maxStanding: numValue,
+            maxStanding: null,
           });
+        } else {
+          const numValue = parseInt(value, 10);
+          if (!isNaN(numValue) && numValue >= 1) {
+            replaceRoute('/commander/:commander', {
+              commander: commander.name,
+              maxStanding: numValue,
+            });
+          }
         }
-      }
-    }, 300),
-    [commander.name, replaceRoute]
+      }, 300),
+    [commander.name, replaceRoute],
   );
+
+  const handleEventSizeChange = useCallback(
+    (value: string) => {
+      setLocalEventSize(value);
+      debouncedEventSizeUpdate(value);
+    },
+    [debouncedEventSizeUpdate],
+  );
+
+  const handleEventSizeSelect = useCallback(
+    (value: number | null) => {
+      const stringValue = value?.toString() || '';
+      setLocalEventSize(stringValue);
+      replaceRoute('/commander/:commander', {
+        commander: commander.name,
+        minEventSize: value,
+      });
+    },
+    [commander.name, replaceRoute],
+  );
+
+  const handleMaxStandingChange = useCallback(
+    (value: string) => {
+      setLocalMaxStanding(value);
+      debouncedMaxStandingUpdate(value);
+    },
+    [debouncedMaxStandingUpdate],
+  );
+
+  const handleMaxStandingSelect = useCallback(
+    (value: number | null) => {
+      const stringValue = value?.toString() || '';
+      setLocalMaxStanding(stringValue);
+      replaceRoute('/commander/:commander', {
+        commander: commander.name,
+        maxStanding: value,
+      });
+    },
+    [commander.name, replaceRoute],
+  );
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === 'Go') {
+      (e.target as HTMLInputElement).blur();
+    }
+  }, []);
 
   return (
     <>
@@ -313,256 +374,95 @@ export function CommanderPageShell({
 
       <div className="mx-auto flex flex-wrap justify-center gap-x-4 gap-y-4 lg:flex-nowrap">
         <div className="relative flex flex-col">
-          <label htmlFor="commander-sort-by" className="text-center text-sm font-medium mb-1 text-white">
-            Sort By
-          </label>
-          <div className="relative">
-            <input
-              style={{ textAlign: 'center' }}
-              id="commander-sort-by"
-              type="text"
-              value={sortBy === 'TOP' ? 'Top Performing' : 'Recent'}
-              readOnly
-              onFocus={(e) => {
-                const dropdown = e.target.parentElement?.querySelector('.sort-by-dropdown');
-                if (dropdown) {
-                  dropdown.classList.remove('hidden');
-                }
-              }}
-              onBlur={(e) => {
-                // Delay hiding to allow clicking on dropdown options
-                setTimeout(() => {
-                  const dropdown = e.target.parentElement?.querySelector('.sort-by-dropdown');
-                  if (dropdown) {
-                    dropdown.classList.add('hidden');
-                  }
-                }, 10);
-              }}
-              className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 cursor-pointer"
-            />
-            <div className="sort-by-dropdown absolute top-full left-0 right-0 bg-gray-800 border border-gray-600 rounded-md mt-1 z-10 hidden">
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer border-b border-gray-600"
-                onMouseDown={() => {
-                  startTransition(() => {
-                    replaceRoute('/commander/:commander', {
-                      commander: commander.name,
-                      sortBy: 'TOP' as EntriesSortBy,
-                    });
-                  });
-                }}
-              >
-                Top Performing
-              </div>
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer border-b border-gray-600"
-                onMouseDown={() => {
-                  replaceRoute('/commander/:commander', {
-                    commander: commander.name,
-                    sortBy: 'NEW' as EntriesSortBy,
-                  });
-                }}
-              >
-                Recent
-              </div>
-            </div>
-          </div>
-        </div>
-
-       
-
-        <div className="relative flex flex-col">
-          <label htmlFor="commander-event-size" className="text-center text-sm font-medium mb-1 text-white">
-            Event Size
-          </label>
-          <div className="relative">
-            <input
-              style={{ textAlign: 'center' }}
-              id="commander-event-size"
-              type="number"
-              min="0"
-              value={localEventSize || ''}
-              onChange={(e) => {
-                // Update local state immediately for responsive UI
-                setLocalEventSize(e.target.value);
-                // Debounce the route update
-                debouncedEventSizeUpdate(e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === 'Go') {
-                  (e.target as HTMLInputElement).blur();
-                  const dropdown = (e.target as HTMLElement).parentElement?.querySelector('.event-size-dropdown');
-                  if (dropdown) {
-                    dropdown.classList.add('hidden');
-                  }
-                }
-              }}
-              onFocus={(e) => {
-                const dropdown = e.target.parentElement?.querySelector('.event-size-dropdown');
-                if (dropdown) {
-                  dropdown.classList.remove('hidden');
-                }
-              }}
-              onBlur={(e) => {
-                // Delay hiding to allow clicking on dropdown options
-                setTimeout(() => {
-                  const dropdown = e.target.parentElement?.querySelector('.event-size-dropdown');
-                  if (dropdown) {
-                    dropdown.classList.add('hidden');
-                  }
-                }, 10);
-              }}
-              className="px-3 py-2 bg-gray-800 border border-gray-600 text-white text-center rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 placeholder-gray-400"
-              placeholder="Minimum players (0 for all)"
-            />
-            <div className="event-size-dropdown absolute top-full left-0 right-0 bg-gray-800 border border-gray-600 rounded-md mt-1 z-10 hidden">
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer border-b border-gray-600"
-                onMouseDown={() => {
-                  setLocalEventSize('');
-                  replaceRoute('/commander/:commander', {
-                    commander: commander.name,
-                    minEventSize: 0,
-                  });
-                }}
-              >
-                All Events
-              </div>
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer border-b border-gray-600"
-                onMouseDown={() => {
-                  setLocalEventSize('32');
-                  replaceRoute('/commander/:commander', {
-                    commander: commander.name,
-                    minEventSize: 32,
-                  });
-                }}
-              >
-                32+ - Medium Events
-              </div>
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer border-b border-gray-600"
-                onMouseDown={() => {
-                  setLocalEventSize('60');
-                  replaceRoute('/commander/:commander', {
-                    commander: commander.name,
-                    minEventSize: 60,
-                  });
-                }}
-              >
-                60+ - Large Events
-              </div>
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer"
-                onMouseDown={() => {
-                  setLocalEventSize('100');
-                  replaceRoute('/commander/:commander', {
-                    commander: commander.name,
-                    minEventSize: 100,
-                  });
-                }}
-              >
-                100+ - Major Events
-              </div>
-            </div>
-          </div>
+          <Dropdown
+            id="commander-sort-by"
+            label="Sort By"
+            value={sortBy === 'TOP' ? 'Top Performing' : 'Recent'}
+            options={[
+              {value: 'TOP' as EntriesSortBy, label: 'Top Performing'},
+              {value: 'NEW' as EntriesSortBy, label: 'Recent'},
+            ]}
+            onSelect={(value) => {
+              replaceRoute('/commander/:commander', {
+                commander: commander.name,
+                sortBy: value,
+              });
+            }}
+          />
         </div>
 
         <div className="relative flex flex-col">
-          <label htmlFor="commander-max-standing" className="text-sm text-center font-medium mb-1 text-white">
-            Standing Cutoff
-          </label>
-          <div className="relative">
-            <input
-              style={{ textAlign: 'center' }}
-              id="commander-max-standing"
-              type="number"
-              min="1"
-              value={localMaxStanding || ''}
-              onChange={(e) => {
-                // Update local state immediately for responsive UI
-                setLocalMaxStanding(e.target.value);
-                // Debounce the route update
-                debouncedMaxStandingUpdate(e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === 'Go') {
-                  (e.target as HTMLInputElement).blur();
-                  const dropdown = (e.target as HTMLElement).parentElement?.querySelector('.max-standing-dropdown');
-                  if (dropdown) {
-                    dropdown.classList.add('hidden');
-                  }
-                }
-              }}
-              onFocus={(e) => {
-                const dropdown = e.target.parentElement?.querySelector('.max-standing-dropdown');
-                if (dropdown) {
-                  dropdown.classList.remove('hidden');
-                }
-              }}
-              onBlur={(e) => {
-                // Delay hiding to allow clicking on dropdown options
-                setTimeout(() => {
-                  const dropdown = e.target.parentElement?.querySelector('.max-standing-dropdown');
-                  if (dropdown) {
-                    dropdown.classList.add('hidden');
-                  }
-                }, 10);
-              }}
-              className="px-3 py-2 bg-gray-800 border border-gray-600 text-white text-center rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 placeholder-gray-400"
-              placeholder="Standing Cutoff"
-            />
-            <div className="max-standing-dropdown absolute top-full left-0 right-0 bg-gray-800 border border-gray-600 rounded-md mt-1 z-10 hidden">
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer border-b border-gray-600"
-                onMouseDown={() => {
-                  setLocalMaxStanding('');
-                  replaceRoute('/commander/:commander', {
-                    commander: commander.name,
-                    maxStanding: null,
-                  });
-                }}
-              >
-                All Players
-              </div>
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer border-b border-gray-600"
-                onMouseDown={() => {
-                  setLocalMaxStanding('1');
-                  replaceRoute('/commander/:commander', {
-                    commander: commander.name,
-                    maxStanding: 1,
-                  });
-                }}
-              >
-                Tournament Winners
-              </div>
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer border-b border-gray-600"
-                onMouseDown={() => {
-                  setLocalMaxStanding('4');
-                  replaceRoute('/commander/:commander', {
-                    commander: commander.name,
-                    maxStanding: 4,
-                  });
-                }}
-              >
-                Top 4
-              </div>
-              <div
-                className="px-3 py-2 text-white text-center hover:bg-gray-700 cursor-pointer"
-                onMouseDown={() => {
-                  setLocalMaxStanding('16');
-                  replaceRoute('/commander/:commander', {
-                    commander: commander.name,
-                    maxStanding: 16,
-                  });
-                }}
-              >
-                Top 16
-              </div>
-            </div>
-          </div>
+          <Dropdown
+            id="commander-time-period"
+            label="Time Period"
+            value={
+              timePeriod === 'ONE_MONTH'
+                ? '1 Month'
+                : timePeriod === 'THREE_MONTHS'
+                  ? '3 Months'
+                  : timePeriod === 'SIX_MONTHS'
+                    ? '6 Months'
+                    : timePeriod === 'ONE_YEAR'
+                      ? '1 Year'
+                      : timePeriod === 'ALL_TIME'
+                        ? 'All Time'
+                        : 'Post Ban'
+            }
+            options={[
+              {value: 'ONE_MONTH', label: '1 Month'},
+              {value: 'THREE_MONTHS', label: '3 Months'},
+              {value: 'SIX_MONTHS', label: '6 Months'},
+              {value: 'ONE_YEAR', label: '1 Year'},
+              {value: 'ALL_TIME', label: 'All Time'},
+              {value: 'POST_BAN', label: 'Post Ban'},
+            ]}
+            onSelect={(value) => {
+              replaceRoute('/commander/:commander', {
+                commander: commander.name,
+                timePeriod: value,
+              });
+            }}
+          />
+        </div>
+
+        <div className="relative flex flex-col">
+          <NumberInputDropdown
+            id="commander-event-size"
+            label="Event Size"
+            value={localEventSize}
+            placeholder="Event Size"
+            min="0"
+            dropdownClassName="event-size-dropdown"
+            options={[
+              {value: null, label: 'All Events'},
+              {value: 32, label: '32+ - Medium Events'},
+              {value: 60, label: '60+ - Large Events'},
+              {value: 100, label: '100+ - Major Events'},
+            ]}
+            onChange={handleEventSizeChange}
+            onSelect={handleEventSizeSelect}
+            onKeyDown={handleKeyDown}
+          />
+        </div>
+
+        <div className="relative flex flex-col">
+          <NumberInputDropdown
+            id="commander-max-standing"
+            label="Standing Cutoff"
+            value={localMaxStanding}
+            placeholder="Standing Cutoff"
+            min="1"
+            dropdownClassName="max-standing-dropdown"
+            options={[
+              {value: null, label: 'All Players'},
+              {value: 1, label: 'Tournament Winners'},
+              {value: 4, label: 'Top 4'},
+              {value: 16, label: 'Top 16'},
+            ]}
+            onChange={handleMaxStandingChange}
+            onSelect={handleMaxStandingSelect}
+            onKeyDown={handleKeyDown}
+          />
         </div>
       </div>
       {children}
@@ -650,4 +550,3 @@ export const CommanderPage: EntryPointComponent<
     </CommanderPageShell>
   );
 };
-

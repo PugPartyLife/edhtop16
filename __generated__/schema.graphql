@@ -65,7 +65,7 @@ type Commander implements Node {
     first: Int
     last: Int
   ): CommanderStaplesConnection!
-  stats(filters: CommanderStatsFilters): CommanderStats!
+  stats: CommanderStats!
 }
 
 type CommanderEntriesConnection {

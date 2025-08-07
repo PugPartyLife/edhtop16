@@ -11,7 +11,49 @@ import {builder} from './builder';
 import {Card} from './card';
 import {Entry} from './entry';
 import {FirstPartyPromoRef, getActivePromotions} from './promo';
-import {minDateFromTimePeriod, TimePeriod} from './types';
+import {minDateFromTimePeriod, TimePeriod, type TimePeriodType} from './types';
+
+const queryCache = new Map<string, {data: any; timestamp: number}>();
+const CACHE_TTL = 60000; // 1 minute
+const MAX_CACHE_SIZE = 100; // Maximum number of cached queries
+
+function cleanupCache() {
+  const now = Date.now();
+  const keysToDelete: string[] = [];
+
+  for (const [key, value] of queryCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      keysToDelete.push(key);
+    }
+  }
+
+  keysToDelete.forEach((key) => queryCache.delete(key));
+
+  if (queryCache.size > MAX_CACHE_SIZE) {
+    const entries = Array.from(queryCache.entries()).sort(
+      (a, b) => a[1].timestamp - b[1].timestamp,
+    );
+
+    const toRemove = entries.slice(0, queryCache.size - MAX_CACHE_SIZE);
+    toRemove.forEach(([key]) => queryCache.delete(key));
+  }
+
+  // console.log(
+  //   `🧹 Cache cleanup: ${keysToDelete.length} expired, ${queryCache.size} remaining`,
+  // );
+}
+
+const isGenerationMode =
+  process.argv.some(
+    (arg) =>
+      arg.includes('generate') ||
+      arg.includes('build') ||
+      arg.includes('schema'),
+  ) || process.env.npm_lifecycle_event?.includes('generate'); // generate:schema hangs without this cause of node...
+
+if (!isGenerationMode) {
+  setInterval(cleanupCache, 5 * 60 * 1000);
+}
 
 const CommandersSortBy = builder.enumType('CommandersSortBy', {
   values: ['POPULARITY', 'CONVERSION', 'TOP_CUTS'] as const,
@@ -62,6 +104,109 @@ Commander.implement({
     colorId: t.exposeString('colorId'),
     breakdownUrl: t.string({
       resolve: (parent) => `/commander/${encodeURIComponent(parent.name)}`,
+    }),
+    stats: t.loadable({
+      type: CommanderStats,
+      byPath: true,
+      resolve: (parent) => parent.id,
+      load: async (commanderIds: number[], ctx) => {
+        const sortBy = ctx.preferences.commanders?.sortBy ?? 'CONVERSION';
+        const timePeriod = (ctx.preferences.commanders?.timePeriod ??
+          'ONE_MONTH') as TimePeriodType;
+        const minEntries = ctx.preferences.commanders?.minEntries ?? 0;
+        const minTournamentSize =
+          ctx.preferences.commanders?.minTournamentSize ?? 0;
+        const colorId = ctx.preferences.commanders?.colorId;
+
+        const minDate = minDateFromTimePeriod(timePeriod);
+        const minTournamentSizeValue = minTournamentSize || 0;
+
+        const [entriesQuery, statsQuery] = await Promise.all([
+          db
+            .selectFrom('Entry')
+            .select((eb) => eb.fn.countAll<number>().as('totalEntries'))
+            .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
+            .where('Tournament.size', '>=', minTournamentSizeValue)
+            .where('Tournament.tournamentDate', '>=', minDate.toISOString())
+            .executeTakeFirstOrThrow(),
+          db
+            .selectFrom('Commander')
+            .leftJoin('Entry', 'Entry.commanderId', 'Commander.id')
+            .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
+            .select([
+              'Commander.id',
+              'Commander.name',
+              'Commander.colorId',
+              (eb) => eb.fn.count<number>('Commander.id').as('count'),
+              (eb) =>
+                eb.fn
+                  .sum<number>(
+                    eb(
+                      eb.cast(eb.ref('Tournament.topCut'), 'real'),
+                      '/',
+                      eb.cast(eb.ref('Tournament.size'), 'real'),
+                    ),
+                  )
+                  .as('topCutBias'),
+              (eb) =>
+                eb.fn
+                  .sum<number>(
+                    eb
+                      .case()
+                      .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
+                      .then(1)
+                      .else(0)
+                      .end(),
+                  )
+                  .as('topCuts'),
+              (eb) =>
+                eb(
+                  eb.cast<number>(
+                    eb.fn.sum<number>(
+                      eb
+                        .case()
+                        .when(
+                          'Entry.standing',
+                          '<=',
+                          eb.ref('Tournament.topCut'),
+                        )
+                        .then(1)
+                        .else(0)
+                        .end(),
+                    ),
+                    'real',
+                  ),
+                  '/',
+                  eb.fn.count<number>('Entry.id'),
+                ).as('conversionRate'),
+            ])
+            .where('Tournament.size', '>=', minTournamentSizeValue)
+            .where('Tournament.tournamentDate', '>=', minDate.toISOString())
+            .where('Commander.id', 'in', commanderIds)
+            .groupBy('Commander.id')
+            .execute(),
+        ]);
+
+        const totalEntries = entriesQuery.totalEntries ?? 1;
+        const statsByCommanderId = new Map<number, CommanderCalculatedStats>();
+        for (const {id, ...stats} of statsQuery) {
+          statsByCommanderId.set(id, {
+            ...stats,
+            metaShare: stats.count / totalEntries,
+          });
+        }
+
+        return commanderIds.map(
+          (id) =>
+            statsByCommanderId.get(id) ?? {
+              topCuts: 0,
+              topCutBias: 0,
+              conversionRate: 0,
+              count: 0,
+              metaShare: 0,
+            },
+        );
+      },
     }),
     entries: t.connection({
       type: Entry,
@@ -214,8 +359,55 @@ builder.queryField('commanders', (t) =>
       sortBy: t.arg({type: CommandersSortBy, defaultValue: 'CONVERSION'}),
       colorId: t.arg.string(),
     },
-    resolve: async (_root, args) => {
-      return resolveCursorConnection(
+    resolve: async (_root, args, context) => {
+      const sortBy =
+        context.preferences.commanders?.sortBy ?? args.sortBy ?? 'CONVERSION';
+      const timePeriod = (context.preferences.commanders?.timePeriod ??
+        args.timePeriod ??
+        'ONE_MONTH') as TimePeriodType;
+      const minEntries =
+        context.preferences.commanders?.minEntries ?? args.minEntries ?? 0;
+      const minTournamentSize =
+        context.preferences.commanders?.minTournamentSize ??
+        args.minTournamentSize ??
+        0;
+      const colorId = context.preferences.commanders?.colorId ?? args.colorId;
+
+      const cacheKey = JSON.stringify({
+        args: {
+          first: args.first,
+          after: args.after,
+          before: args.before,
+          last: args.last,
+        },
+        filters: {
+          sortBy,
+          timePeriod,
+          minEntries,
+          minTournamentSize,
+          colorId,
+        },
+      });
+
+      const cached = queryCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        console.log('⚡ Using cached commanders query result');
+        return cached.data;
+      }
+
+      console.log('🔍 Executing fresh commanders query');
+      console.log('⚙️ Commander resolver - final values:', {
+        sortBy,
+        timePeriod,
+        minEntries,
+        minTournamentSize,
+        colorId,
+        fromArgs: {sortBy: args.sortBy, timePeriod: args.timePeriod},
+        fromContext: context.preferences.commanders,
+        finalUsed: {sortBy, timePeriod, minEntries, minTournamentSize, colorId},
+      });
+
+      const result = await resolveCursorConnection(
         {args, toCursor: (parent) => `${parent.id}`},
         async ({
           before,
@@ -223,13 +415,13 @@ builder.queryField('commanders', (t) =>
           limit,
           inverted,
         }: ResolveCursorConnectionArgs) => {
-          const minDate = minDateFromTimePeriod(args.timePeriod ?? 'ONE_MONTH');
-          const minTournamentSize = args.minTournamentSize || 0;
-          const minEntries = args.minEntries || 0;
-          const sortBy =
-            args.sortBy === 'POPULARITY'
+          const minDate = minDateFromTimePeriod(timePeriod);
+          const minTournamentSizeValue = minTournamentSize || 0;
+          const minEntriesValue = minEntries || 0;
+          const sortByField =
+            sortBy === 'POPULARITY'
               ? 'stats.count'
-              : args.sortBy === 'TOP_CUTS'
+              : sortBy === 'TOP_CUTS'
                 ? 'stats.topCuts'
                 : 'stats.conversionRate';
 
@@ -240,7 +432,7 @@ builder.queryField('commanders', (t) =>
                 .leftJoin('Entry', 'Entry.commanderId', 'Commander.id')
                 .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
                 .where('Tournament.tournamentDate', '>=', minDate.toISOString())
-                .where('Tournament.size', '>=', minTournamentSize)
+                .where('Tournament.size', '>=', minTournamentSizeValue)
                 .groupBy('Commander.id')
                 .select((eb) => [
                   eb.ref('Commander.id').as('commanderId'),
@@ -285,21 +477,21 @@ builder.queryField('commanders', (t) =>
             .leftJoin('stats', 'stats.commanderId', 'Commander.id')
             .where('Commander.name', '!=', 'Unknown Commander')
             .where('Commander.name', '!=', 'Nadu, Winged Wisdom')
-            .where('stats.count', '>=', minEntries);
+            .where('stats.count', '>=', minEntriesValue);
 
-          if (args.colorId) {
-            query = query.where('Commander.colorId', '=', args.colorId);
+          if (colorId) {
+            query = query.where('Commander.colorId', '=', colorId);
           }
 
           if (before) {
             query = query.where((eb) =>
               eb(
-                eb.tuple(eb.ref(sortBy), eb.ref('Commander.id')),
+                eb.tuple(eb.ref(sortByField), eb.ref('Commander.id')),
                 '>',
                 eb.tuple(
                   eb
                     .selectFrom('stats')
-                    .select(sortBy)
+                    .select(sortByField)
                     .where('commanderId', '=', Number(after)),
                   Number(after),
                 ),
@@ -310,12 +502,12 @@ builder.queryField('commanders', (t) =>
           if (after) {
             query = query.where((eb) =>
               eb(
-                eb.tuple(eb.ref(sortBy), eb.ref('Commander.id')),
+                eb.tuple(eb.ref(sortByField), eb.ref('Commander.id')),
                 '<',
                 eb.tuple(
                   eb
                     .selectFrom('stats')
-                    .select(sortBy)
+                    .select(sortByField)
                     .where('commanderId', '=', Number(after)),
                   Number(after),
                 ),
@@ -324,13 +516,24 @@ builder.queryField('commanders', (t) =>
           }
 
           query = query
-            .orderBy(sortBy, inverted ? 'asc' : 'desc')
+            .orderBy(sortByField, inverted ? 'asc' : 'desc')
             .orderBy('Commander.id', inverted ? 'asc' : 'desc')
             .limit(limit);
 
           return query.execute();
         },
       );
+
+      queryCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now(),
+      });
+
+      // console.log(
+      //   `💾 Cached commanders query result (cache size: ${queryCache.size})`,
+      // );
+
+      return result;
     },
   }),
 );
@@ -354,107 +557,3 @@ const CommanderStats = builder
       metaShare: t.exposeFloat('metaShare'),
     }),
   });
-
-builder.objectField(Commander, 'stats', (t) =>
-  t.loadable({
-    type: CommanderStats,
-    byPath: true,
-    args: {filters: t.arg({type: CommanderStatsFilters})},
-    resolve: (parent) => parent.id,
-    load: async (commanderIds: number[], _ctx, {filters}) => {
-      const minSize = filters?.minSize ?? 0;
-      const maxSize = filters?.maxSize ?? 1_000_000;
-      const maxDate = filters?.maxDate ? new Date(filters.maxDate) : new Date();
-      const minDate =
-        filters?.minDate != null
-          ? new Date(filters?.minDate ?? 0)
-          : minDateFromTimePeriod(filters?.timePeriod);
-
-      const [entriesQuery, statsQuery] = await Promise.all([
-        db
-          .selectFrom('Entry')
-          .select((eb) => eb.fn.countAll<number>().as('totalEntries'))
-          .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
-          .where('Tournament.size', '>=', minSize)
-          .where('Tournament.size', '<=', maxSize)
-          .where('Tournament.tournamentDate', '>=', minDate.toISOString())
-          .where('Tournament.tournamentDate', '<=', maxDate.toISOString())
-          .executeTakeFirstOrThrow(),
-        db
-          .selectFrom('Commander')
-          .leftJoin('Entry', 'Entry.commanderId', 'Commander.id')
-          .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
-          .select([
-            'Commander.id',
-            'Commander.name',
-            'Commander.colorId',
-            (eb) => eb.fn.count<number>('Commander.id').as('count'),
-            (eb) =>
-              eb.fn
-                .sum<number>(
-                  eb(
-                    eb.cast(eb.ref('Tournament.topCut'), 'real'),
-                    '/',
-                    eb.cast(eb.ref('Tournament.size'), 'real'),
-                  ),
-                )
-                .as('topCutBias'),
-            (eb) =>
-              eb.fn
-                .sum<number>(
-                  eb
-                    .case()
-                    .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
-                    .then(1)
-                    .else(0)
-                    .end(),
-                )
-                .as('topCuts'),
-            (eb) =>
-              eb(
-                eb.cast<number>(
-                  eb.fn.sum<number>(
-                    eb
-                      .case()
-                      .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
-                      .then(1)
-                      .else(0)
-                      .end(),
-                  ),
-                  'real',
-                ),
-                '/',
-                eb.fn.count<number>('Entry.id'),
-              ).as('conversionRate'),
-          ])
-          .where('Tournament.size', '>=', minSize)
-          .where('Tournament.size', '<=', maxSize)
-          .where('Tournament.tournamentDate', '>=', minDate.toISOString())
-          .where('Tournament.tournamentDate', '<=', maxDate.toISOString())
-          .where('Commander.id', 'in', commanderIds)
-          .groupBy('Commander.id')
-          .execute(),
-      ]);
-
-      const totalEntries = entriesQuery.totalEntries ?? 1;
-      const statsByCommanderId = new Map<number, CommanderCalculatedStats>();
-      for (const {id, ...stats} of statsQuery) {
-        statsByCommanderId.set(id, {
-          ...stats,
-          metaShare: stats.count / totalEntries,
-        });
-      }
-
-      return commanderIds.map(
-        (id) =>
-          statsByCommanderId.get(id) ?? {
-            topCuts: 0,
-            topCutBias: 0,
-            conversionRate: 0,
-            count: 0,
-            metaShare: 0,
-          },
-      );
-    },
-  }),
-);

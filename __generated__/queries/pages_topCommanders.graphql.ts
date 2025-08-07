@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2329427560741b613a6e6193a698c614>>
+ * @generated SignedSource<<dde34331637ac2e280988acdcdf4d1b6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -35,11 +35,7 @@ var v0 = [
 return {
   "argumentDefinitions": [
     {
-      "kind": "RootArgument",
-      "name": "colorId"
-    },
-    {
-      "defaultValue": 48,
+      "defaultValue": 20,
       "kind": "LocalArgument",
       "name": "count"
     },
@@ -47,22 +43,6 @@ return {
       "defaultValue": null,
       "kind": "LocalArgument",
       "name": "cursor"
-    },
-    {
-      "kind": "RootArgument",
-      "name": "minEntries"
-    },
-    {
-      "kind": "RootArgument",
-      "name": "minTournamentSize"
-    },
-    {
-      "kind": "RootArgument",
-      "name": "sortBy"
-    },
-    {
-      "kind": "RootArgument",
-      "name": "timePeriod"
     }
   ],
   "kind": "Fragment",
@@ -92,33 +72,7 @@ return {
   "selections": [
     {
       "alias": "commanders",
-      "args": [
-        {
-          "kind": "Variable",
-          "name": "colorId",
-          "variableName": "colorId"
-        },
-        {
-          "kind": "Variable",
-          "name": "minEntries",
-          "variableName": "minEntries"
-        },
-        {
-          "kind": "Variable",
-          "name": "minTournamentSize",
-          "variableName": "minTournamentSize"
-        },
-        {
-          "kind": "Variable",
-          "name": "sortBy",
-          "variableName": "sortBy"
-        },
-        {
-          "kind": "Variable",
-          "name": "timePeriod",
-          "variableName": "timePeriod"
-        }
-      ],
+      "args": null,
       "concreteType": "QueryCommandersConnection",
       "kind": "LinkedField",
       "name": "__pages__commanders_connection",
@@ -206,6 +160,6 @@ return {
 };
 })();
 
-(node as any).hash = "b5a6c24d9b40c399fa950a403034faa7";
+(node as any).hash = "7196d3105a6fcc24d00413bb7af341ad";
 
 export default node;
