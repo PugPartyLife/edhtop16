@@ -2,12 +2,12 @@ import SchemaBuilder from '@pothos/core';
 import DataloaderPlugin from '@pothos/plugin-dataloader';
 import RelayPlugin from '@pothos/plugin-relay';
 import {TopdeckClient} from '../topdeck';
-import {CommanderPreferences} from '#src/lib/client/cookies.js';
+import type {PreferencesMap} from '../../client/cookies';
 
 export interface Context {
   topdeckClient: TopdeckClient;
-  commanderPreferences: CommanderPreferences;
-  setCommanderPreferences: (prefs: CommanderPreferences) => void;
+  preferences: PreferencesMap;
+  setPreferences: (prefs: PreferencesMap) => void;
 }
 
 export const builder = new SchemaBuilder<{

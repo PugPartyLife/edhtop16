@@ -7,12 +7,15 @@ import {
   Store,
 } from 'relay-runtime';
 import {createContext} from './context';
-import type {CommanderPreferences} from '#src/lib/client/cookies';
+import {TopdeckClient} from './topdeck';
+import type {PreferencesMap} from '#src/lib/client/cookies';
+
+const topdeckClient = new TopdeckClient();
 
 export function createServerEnvironment(
   schema: GraphQLSchema,
   persistedQueries?: Record<string, string>,
-  commanderPreferences?: CommanderPreferences,
+  preferences?: PreferencesMap,
 ) {
   const networkFetchFunction: FetchFunction = async (request, variables) => {
     let source = request.text;
@@ -24,11 +27,16 @@ export function createServerEnvironment(
       throw new Error(`Could not find source for query: ${request.id}`);
     }
 
-    const contextValue = createContext(commanderPreferences);
+    
+    const contextValue = createContext(
+      topdeckClient,
+      preferences ?? { commanders: {} },
+      () => {} // no-op for setPreferences on server
+    );
 
     // console.log(
     //   '🏗️ SSR GraphQL: Executing with context preferences:',
-    //   contextValue.commanderPreferences,
+    //   contextValue.preferences,
     // );
 
     const results = await graphql({

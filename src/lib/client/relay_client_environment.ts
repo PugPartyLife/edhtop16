@@ -1,7 +1,13 @@
 import {Environment, Network, RecordSource, Store} from 'relay-runtime';
-import type {CommanderPreferences} from './cookies';
+import type {CommandersPreferences, EntryPreferences} from './cookies';
 
-let currentPreferences: CommanderPreferences = {};
+type PreferencesMap = {
+  commanders?: CommandersPreferences;
+  entry?: EntryPreferences;
+  // Add more as needed
+};
+
+let currentPreferences: PreferencesMap = {};
 
 const requestCache = new Map<string, Promise<any>>();
 
@@ -10,11 +16,8 @@ export function createClientNetwork() {
     const cacheKey = `${params.id || params.name}-${JSON.stringify(variables)}-${JSON.stringify(currentPreferences)}`;
 
     if (requestCache.has(cacheKey)) {
-      // console.log('🚀 Using cached request for:', params.name);
       return requestCache.get(cacheKey)!;
     }
-
-    // console.log('🚀 New GraphQL Request:', params.name);
 
     const requestPromise = (async () => {
       const requestBody = {
@@ -23,7 +26,7 @@ export function createClientNetwork() {
         variables,
 
         extensions: {
-          commanderPreferences: currentPreferences,
+          sitePreferences: currentPreferences, // generalized key
         },
       };
 
@@ -64,12 +67,11 @@ export function getClientEnvironment() {
   return clientEnv;
 }
 
-export function updateRelayPreferences(prefs: CommanderPreferences) {
-  currentPreferences = {...prefs};
-  // console.log('🔄 Relay preferences updated:', currentPreferences);
+export function updateRelayPreferences(prefs: Partial<PreferencesMap>) {
+  currentPreferences = {...currentPreferences, ...prefs};
 }
 
-export function getRelayPreferences(): CommanderPreferences {
+export function getRelayPreferences(): PreferencesMap {
   return currentPreferences;
 }
 

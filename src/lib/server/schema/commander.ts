@@ -110,13 +110,13 @@ Commander.implement({
       byPath: true,
       resolve: (parent) => parent.id,
       load: async (commanderIds: number[], ctx) => {
-        const sortBy = ctx.commanderPreferences.sortBy ?? 'CONVERSION';
-        const timePeriod = (ctx.commanderPreferences.timePeriod ??
+        const sortBy = ctx.preferences.commanders?.sortBy ?? 'CONVERSION';
+        const timePeriod = (ctx.preferences.commanders?.timePeriod ??
           'ONE_MONTH') as TimePeriodType;
-        const minEntries = ctx.commanderPreferences.minEntries ?? 0;
+        const minEntries = ctx.preferences.commanders?.minEntries ?? 0;
         const minTournamentSize =
-          ctx.commanderPreferences.minTournamentSize ?? 0;
-        const colorId = ctx.commanderPreferences.colorId;
+          ctx.preferences.commanders?.minTournamentSize ?? 0;
+        const colorId = ctx.preferences.commanders?.colorId;
 
         const minDate = minDateFromTimePeriod(timePeriod);
         const minTournamentSizeValue = minTournamentSize || 0;
@@ -361,17 +361,17 @@ builder.queryField('commanders', (t) =>
     },
     resolve: async (_root, args, context) => {
       const sortBy =
-        context.commanderPreferences.sortBy ?? args.sortBy ?? 'CONVERSION';
-      const timePeriod = (context.commanderPreferences.timePeriod ??
+        context.preferences.commanders?.sortBy ?? args.sortBy ?? 'CONVERSION';
+      const timePeriod = (context.preferences.commanders?.timePeriod ??
         args.timePeriod ??
         'ONE_MONTH') as TimePeriodType;
       const minEntries =
-        context.commanderPreferences.minEntries ?? args.minEntries ?? 0;
+        context.preferences.commanders?.minEntries ?? args.minEntries ?? 0;
       const minTournamentSize =
-        context.commanderPreferences.minTournamentSize ??
+        context.preferences.commanders?.minTournamentSize ??
         args.minTournamentSize ??
         0;
-      const colorId = context.commanderPreferences.colorId ?? args.colorId;
+      const colorId = context.preferences.commanders?.colorId ?? args.colorId;
 
       const cacheKey = JSON.stringify({
         args: {
@@ -403,7 +403,7 @@ builder.queryField('commanders', (t) =>
         minTournamentSize,
         colorId,
         fromArgs: {sortBy: args.sortBy, timePeriod: args.timePeriod},
-        fromContext: context.commanderPreferences,
+        fromContext: context.preferences.commanders,
         finalUsed: {sortBy, timePeriod, minEntries, minTournamentSize, colorId},
       });
 

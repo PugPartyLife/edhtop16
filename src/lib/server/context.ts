@@ -1,13 +1,15 @@
 import {Context} from './schema/builder';
 import {TopdeckClient} from './topdeck';
-import type {CommanderPreferences} from '#src/lib/client/cookies';
+import type {PreferencesMap} from '#src/lib/client/cookies';
 
 export function createContext(
-  commanderPreferences?: CommanderPreferences,
+  topdeckClient: TopdeckClient,
+  preferences: PreferencesMap,
+  setPreferences: (prefs: PreferencesMap) => void
 ): Context {
   return {
-    topdeckClient: new TopdeckClient(),
-    commanderPreferences: commanderPreferences || {},
-    setCommanderPreferences: () => {},
+    topdeckClient,
+    preferences,
+    setPreferences,
   };
 }

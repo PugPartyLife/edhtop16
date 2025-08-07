@@ -1,7 +1,8 @@
 import {useState, useEffect, useRef, useCallback} from 'react';
 import {updateRelayPreferences} from './relay_client_environment';
 
-export interface CommanderPreferences {
+// Example preference types
+export interface CommandersPreferences {
   sortBy?: 'CONVERSION' | 'POPULARITY';
   timePeriod?:
     | 'ONE_MONTH'
@@ -16,20 +17,46 @@ export interface CommanderPreferences {
   display?: 'card' | 'table';
 }
 
-const DEFAULT_PREFERENCES: CommanderPreferences = {
-  sortBy: 'CONVERSION',
-  timePeriod: 'ONE_MONTH',
-  display: 'card',
-  minEntries: 0,
-  minTournamentSize: 0,
-  colorId: '',
+export interface EntryPreferences {
+  maxStanding?: number;
+  minEventSize?: number;
+  sortBy?: 'TOP' | 'NEW';
+  timePeriod?:
+    | 'ONE_MONTH'
+    | 'THREE_MONTHS'
+    | 'SIX_MONTHS'
+    | 'ONE_YEAR'
+    | 'ALL_TIME'
+    | 'POST_BAN';
+}
+
+export type PreferencesMap = {
+  commanders?: CommandersPreferences;
+  entry?: EntryPreferences;
+  // Add more as needed
 };
 
-let refetchCallback: ((prefs?: CommanderPreferences) => void) | undefined =
-  undefined;
+const DEFAULT_PREFERENCES: PreferencesMap = {
+  commanders: {
+    sortBy: 'CONVERSION',
+    timePeriod: 'ONE_MONTH',
+    display: 'card',
+    minEntries: 0,
+    minTournamentSize: 0,
+    colorId: '',
+  },
+  entry: {
+    maxStanding: 0,
+    minEventSize: 0,
+    sortBy: 'TOP',
+    timePeriod: 'ONE_MONTH',
+  },
+};
+
+let refetchCallback: ((prefs?: any) => void) | undefined = undefined;
 
 export function setRefetchCallback(
-  callback?: (prefs?: CommanderPreferences) => void,
+  callback?: (prefs?: any) => void,
 ) {
   refetchCallback = callback;
 }
@@ -45,9 +72,7 @@ function getCookie(name: string): string | null {
     if (parts.length === 2) {
       return parts.pop()?.split(';').shift() || null;
     }
-  } catch (error) {
-    // do something fun later
-  }
+  } catch (error) {}
   return null;
 }
 
@@ -56,25 +81,17 @@ function setCookie(name: string, value: string, days: number = 365) {
     const expires = new Date();
     expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
     document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`;
-  } catch (error) {
-    // do something fun later
-  }
+  } catch (error) {}
 }
 
-export function useCommanderPreferences() {
-  const [preferences, setPreferences] =
-    useState<CommanderPreferences>(DEFAULT_PREFERENCES);
-
+export function usePreferences<K extends keyof PreferencesMap>(
+  key: K,
+  defaultPrefs: PreferencesMap[K]
+) {
+  const [preferences, setPreferences] = useState<PreferencesMap[K]>(defaultPrefs);
   const [isHydrated, setIsHydrated] = useState(false);
   const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasHydratedRef = useRef(false);
-  const initialServerPrefsRef = useRef<CommanderPreferences | null>(null);
-
-  useEffect(() => {
-    if (!initialServerPrefsRef.current) {
-      initialServerPrefsRef.current = preferences;
-    }
-  }, [preferences]);
 
   useEffect(() => {
     if (hasHydratedRef.current) return;
@@ -82,61 +99,47 @@ export function useCommanderPreferences() {
 
     setIsHydrated(true);
 
-    let serverPrefs = DEFAULT_PREFERENCES;
-
-    if (
-      typeof window !== 'undefined' &&
-      (window as any).__SERVER_PREFERENCES__
-    ) {
-      serverPrefs = (window as any).__SERVER_PREFERENCES__;
-      // console.log(
-      //   '🍪 [HYDRATE] Using server-injected preferences:',
-      //   serverPrefs,
-      // );
-      delete (window as any).__SERVER_PREFERENCES__;
-    } else {
-      const cookieValue = getCookie('commanderPreferences');
-      if (cookieValue) {
-        try {
-          serverPrefs = {
-            ...DEFAULT_PREFERENCES,
-            ...JSON.parse(decodeURIComponent(cookieValue)),
-          };
-          // console.log('🍪 [HYDRATE] Using cookie preferences:', serverPrefs);
-        } catch (error) {
-          console.warn('❌ [HYDRATE] Failed to parse cookies:', error);
-        }
-      }
+    let allPrefs: PreferencesMap = {...DEFAULT_PREFERENCES};
+    const cookieValue = getCookie('sitePreferences');
+    if (cookieValue) {
+      try {
+        allPrefs = {...allPrefs, ...JSON.parse(decodeURIComponent(cookieValue))};
+      } catch (error) {}
     }
+    const serverPrefs = allPrefs[key] || defaultPrefs;
 
     if (JSON.stringify(preferences) !== JSON.stringify(serverPrefs)) {
       setPreferences(serverPrefs);
-      updateRelayPreferences(serverPrefs);
+      updateRelayPreferences({ [key]: serverPrefs }); // <-- wrap in object with key
       setTimeout(() => {
         refetchCallback?.(serverPrefs);
       }, 100);
     } else {
-      updateRelayPreferences(serverPrefs);
+      updateRelayPreferences({ [key]: serverPrefs }); // <-- wrap in object with key
     }
-  }, [preferences]);
+  }, [preferences, key, defaultPrefs]);
 
   const updatePreference = useCallback(
-    (key: keyof CommanderPreferences, value: any) => {
-      // console.log('🍪 updatePreference called:', key, '=', value);
-
+    (prefKey: keyof PreferencesMap[K], value: any) => {
       setPreferences((prevPrefs) => {
-        const newPrefs = {...prevPrefs};
-
-        if (!value || value === '' || value === null) {
-          delete newPrefs[key];
+        const newPrefs = {...(prevPrefs ?? {})} as PreferencesMap[K];
+        if (!value && value !== 0) {
+          delete (newPrefs as any)[prefKey];
         } else {
-          newPrefs[key] = value;
+          (newPrefs as any)[prefKey] = value;
         }
 
-        // console.log('🍪 Setting new preferences:', newPrefs);
-
-        setCookie('commanderPreferences', JSON.stringify(newPrefs));
-        updateRelayPreferences(newPrefs);
+        // Save to cookie
+        let allPrefs: PreferencesMap = {...DEFAULT_PREFERENCES};
+        const cookieValue = getCookie('sitePreferences');
+        if (cookieValue) {
+          try {
+            allPrefs = {...allPrefs, ...JSON.parse(decodeURIComponent(cookieValue))};
+          } catch (error) {}
+        }
+        allPrefs[key] = newPrefs;
+        setCookie('sitePreferences', JSON.stringify(allPrefs));
+        updateRelayPreferences({ [key]: newPrefs });
 
         if (refetchTimeoutRef.current) {
           clearTimeout(refetchTimeoutRef.current);
@@ -144,7 +147,6 @@ export function useCommanderPreferences() {
         }
 
         refetchTimeoutRef.current = setTimeout(() => {
-          // console.log('🍪 Triggering refetch after preference change');
           if (refetchCallback) {
             refetchCallback(newPrefs);
           }
@@ -154,8 +156,12 @@ export function useCommanderPreferences() {
         return newPrefs;
       });
     },
-    [],
+    [key]
   );
 
   return {preferences, updatePreference, isHydrated};
 }
+
+// Usage examples:
+// const {preferences, updatePreference} = usePreferences('commanders', DEFAULT_PREFERENCES.commanders);
+// const {preferences, updatePreference} = usePreferences('entry', DEFAULT_PREFERENCES.entry);

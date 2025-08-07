@@ -24,10 +24,10 @@ import {
   usePreloadedQuery,
 } from 'react-relay/hooks';
 import {
-  useCommanderPreferences,
+  usePreferences,
   setRefetchCallback,
   clearRefetchCallback,
-  CommanderPreferences,
+  type PreferencesMap,
 } from '../lib/client/cookies';
 import {ColorIdentity} from '../assets/icons/colors';
 import {Card} from '../components/card';
@@ -161,8 +161,8 @@ function CommandersPageShell({
     | 'ALL_TIME'
     | 'POST_BAN';
   display: 'card' | 'table';
-  updatePreference: (key: keyof CommanderPreferences, value: any) => void;
-  preferences: CommanderPreferences;
+  updatePreference: (key: keyof PreferencesMap['commanders'], value: any) => void;
+  preferences: PreferencesMap['commanders'];
 }>) {
   useSeoMeta({
     title: 'cEDH Commanders',
@@ -182,13 +182,13 @@ function CommandersPageShell({
     minEntries: debounce((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
       if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-        updatePreference('minEntries', numValue);
+        updatePreference('minEntries' as keyof PreferencesMap['commanders'], numValue);
       }
     }, 250),
     eventSize: debounce((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
       if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-        updatePreference('minTournamentSize', numValue);
+        updatePreference('minTournamentSize' as keyof PreferencesMap['commanders'], numValue);
       }
     }, 250),
   }).current;
@@ -227,7 +227,7 @@ function CommandersPageShell({
             className="cursor-pointer"
             onClick={() =>
               updatePreference(
-                'display',
+                'display' as keyof PreferencesMap['commanders'],
                 display === 'table' ? 'card' : 'table',
               )
             }
@@ -245,7 +245,7 @@ function CommandersPageShell({
           <div className="flex-1">
             <ColorSelection
               selected={colorId}
-              onChange={(value) => updatePreference('colorId', value)}
+              onChange={(value) => updatePreference('colorId' as keyof PreferencesMap['commanders'], value)}
             />
           </div>
 
@@ -255,7 +255,7 @@ function CommandersPageShell({
                 id="commanders-sort-by"
                 label="Sort By"
                 value={
-                  preferences.sortBy === 'POPULARITY'
+                  preferences?.sortBy === 'POPULARITY'
                     ? 'Most Popular'
                     : 'Top Performing'
                 }
@@ -263,7 +263,7 @@ function CommandersPageShell({
                   {value: 'CONVERSION' as const, label: 'Top Performing'},
                   {value: 'POPULARITY' as const, label: 'Most Popular'},
                 ]}
-                onSelect={(value) => updatePreference('sortBy', value)}
+                onSelect={(value) => updatePreference('sortBy' as keyof PreferencesMap['commanders'], value)}
               />
             </div>
 
@@ -271,7 +271,7 @@ function CommandersPageShell({
               <Dropdown
                 id="commanders-time-period"
                 label="Time Period"
-                value={getTimePeriodLabel(preferences.timePeriod || timePeriod)}
+                value={getTimePeriodLabel(preferences?.timePeriod || timePeriod)}
                 options={[
                   {value: 'ONE_MONTH' as const, label: '1 Month'},
                   {value: 'THREE_MONTHS' as const, label: '3 Months'},
@@ -280,7 +280,7 @@ function CommandersPageShell({
                   {value: 'ALL_TIME' as const, label: 'All Time'},
                   {value: 'POST_BAN' as const, label: 'Post Ban'},
                 ]}
-                onSelect={(value) => updatePreference('timePeriod', value)}
+                onSelect={(value) => updatePreference('timePeriod' as keyof PreferencesMap['commanders'], value)}
               />
             </div>
 
@@ -308,7 +308,7 @@ function CommandersPageShell({
                   startTransition(() => {
                     setLocalMinEntries(stringValue);
                   });
-                  updatePreference('minEntries', value);
+                  updatePreference('minEntries' as keyof PreferencesMap['commanders'], value);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === 'Go') {
@@ -341,7 +341,7 @@ function CommandersPageShell({
                   startTransition(() => {
                     setLocalEventSize(stringValue);
                   });
-                  updatePreference('minTournamentSize', value);
+                  updatePreference('minTournamentSize' as keyof PreferencesMap['commanders'], value);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === 'Go') {
@@ -364,7 +364,14 @@ export const CommandersPage: EntryPointComponent<
   {commandersQueryRef: pages_CommandersQuery},
   {}
 > = ({queries}) => {
-  const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
+    const {preferences, updatePreference, isHydrated} = usePreferences('commanders', {
+    sortBy: 'CONVERSION',
+    timePeriod: 'ONE_MONTH',
+    minEntries: 0,
+    minTournamentSize: 0,
+    colorId: '',
+    display: 'card',
+  });
   const hasRefetchedRef = useRef(false);
 
   const serverPreferences = useMemo(() => {
@@ -373,13 +380,8 @@ export const CommandersPage: EntryPointComponent<
       (window as any).__SERVER_PREFERENCES__
     ) {
       const prefs = (window as any).__SERVER_PREFERENCES__;
-      // console.log(
-      //   '🏗️ [COMPONENT] Retrieved server preferences from window:',
-      //   prefs,
-      // );
       return prefs;
     }
-    // console.log('🏗️ [COMPONENT] No server preferences found in window');
     return null;
   }, []);
 
@@ -417,7 +419,7 @@ export const CommandersPage: EntryPointComponent<
       query,
     );
 
-  const display = preferences.display || 'card';
+  const display = preferences?.display || 'card';
 
   const handleRefetch = useCallback(() => {
     // console.log('🔄 Manual refetch triggered');
@@ -475,16 +477,16 @@ export const CommandersPage: EntryPointComponent<
   }, [isHydrated, preferences, serverPreferences]);
 
   const secondaryStatistic =
-    preferences.sortBy === 'CONVERSION' ? 'topCuts' : 'count';
+    preferences?.sortBy === 'CONVERSION' ? 'topCuts' : 'count';
 
   return (
     <CommandersPageShell
-      sortBy={preferences.sortBy || 'CONVERSION'}
-      timePeriod={preferences.timePeriod || 'ONE_MONTH'}
-      colorId={preferences.colorId || ''}
-      minEntries={preferences.minEntries || null}
-      minTournamentSize={preferences.minTournamentSize || null}
-      display={display}
+      sortBy={preferences?.sortBy || 'CONVERSION'}
+      timePeriod={preferences?.timePeriod || 'ONE_MONTH'}
+      colorId={preferences?.colorId || ''}
+      minEntries={preferences?.minEntries || null}
+      minTournamentSize={preferences?.minTournamentSize || null}
+      display={preferences?.display || 'card'}
       updatePreference={updatePreference}
       preferences={preferences}
     >
