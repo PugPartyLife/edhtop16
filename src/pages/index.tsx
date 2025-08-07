@@ -161,7 +161,10 @@ function CommandersPageShell({
     | 'ALL_TIME'
     | 'POST_BAN';
   display: 'card' | 'table';
-  updatePreference: (key: keyof PreferencesMap['commanders'], value: any) => void;
+  updatePreference: (
+    key: keyof PreferencesMap['commanders'],
+    value: any,
+  ) => void;
   preferences: PreferencesMap['commanders'];
 }>) {
   useSeoMeta({
@@ -182,13 +185,19 @@ function CommandersPageShell({
     minEntries: debounce((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
       if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-        updatePreference('minEntries' as keyof PreferencesMap['commanders'], numValue);
+        updatePreference(
+          'minEntries' as keyof PreferencesMap['commanders'],
+          numValue,
+        );
       }
     }, 250),
     eventSize: debounce((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
       if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-        updatePreference('minTournamentSize' as keyof PreferencesMap['commanders'], numValue);
+        updatePreference(
+          'minTournamentSize' as keyof PreferencesMap['commanders'],
+          numValue,
+        );
       }
     }, 250),
   }).current;
@@ -245,7 +254,12 @@ function CommandersPageShell({
           <div className="flex-1">
             <ColorSelection
               selected={colorId}
-              onChange={(value) => updatePreference('colorId' as keyof PreferencesMap['commanders'], value)}
+              onChange={(value) =>
+                updatePreference(
+                  'colorId' as keyof PreferencesMap['commanders'],
+                  value,
+                )
+              }
             />
           </div>
 
@@ -263,7 +277,12 @@ function CommandersPageShell({
                   {value: 'CONVERSION' as const, label: 'Top Performing'},
                   {value: 'POPULARITY' as const, label: 'Most Popular'},
                 ]}
-                onSelect={(value) => updatePreference('sortBy' as keyof PreferencesMap['commanders'], value)}
+                onSelect={(value) =>
+                  updatePreference(
+                    'sortBy' as keyof PreferencesMap['commanders'],
+                    value,
+                  )
+                }
               />
             </div>
 
@@ -271,7 +290,9 @@ function CommandersPageShell({
               <Dropdown
                 id="commanders-time-period"
                 label="Time Period"
-                value={getTimePeriodLabel(preferences?.timePeriod || timePeriod)}
+                value={getTimePeriodLabel(
+                  preferences?.timePeriod || timePeriod,
+                )}
                 options={[
                   {value: 'ONE_MONTH' as const, label: '1 Month'},
                   {value: 'THREE_MONTHS' as const, label: '3 Months'},
@@ -280,7 +301,12 @@ function CommandersPageShell({
                   {value: 'ALL_TIME' as const, label: 'All Time'},
                   {value: 'POST_BAN' as const, label: 'Post Ban'},
                 ]}
-                onSelect={(value) => updatePreference('timePeriod' as keyof PreferencesMap['commanders'], value)}
+                onSelect={(value) =>
+                  updatePreference(
+                    'timePeriod' as keyof PreferencesMap['commanders'],
+                    value,
+                  )
+                }
               />
             </div>
 
@@ -308,7 +334,10 @@ function CommandersPageShell({
                   startTransition(() => {
                     setLocalMinEntries(stringValue);
                   });
-                  updatePreference('minEntries' as keyof PreferencesMap['commanders'], value);
+                  updatePreference(
+                    'minEntries' as keyof PreferencesMap['commanders'],
+                    value,
+                  );
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === 'Go') {
@@ -341,7 +370,10 @@ function CommandersPageShell({
                   startTransition(() => {
                     setLocalEventSize(stringValue);
                   });
-                  updatePreference('minTournamentSize' as keyof PreferencesMap['commanders'], value);
+                  updatePreference(
+                    'minTournamentSize' as keyof PreferencesMap['commanders'],
+                    value,
+                  );
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === 'Go') {
@@ -364,14 +396,17 @@ export const CommandersPage: EntryPointComponent<
   {commandersQueryRef: pages_CommandersQuery},
   {}
 > = ({queries}) => {
-    const {preferences, updatePreference, isHydrated} = usePreferences('commanders', {
-    sortBy: 'CONVERSION',
-    timePeriod: 'ONE_MONTH',
-    minEntries: 0,
-    minTournamentSize: 0,
-    colorId: '',
-    display: 'card',
-  });
+  const {preferences, updatePreference, isHydrated} = usePreferences(
+    'commanders',
+    {
+      sortBy: 'CONVERSION',
+      timePeriod: 'ONE_MONTH',
+      minEntries: 0,
+      minTournamentSize: 0,
+      colorId: '',
+      display: 'card',
+    },
+  );
   const hasRefetchedRef = useRef(false);
 
   const serverPreferences = useMemo(() => {

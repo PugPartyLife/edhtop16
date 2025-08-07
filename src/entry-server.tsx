@@ -17,7 +17,7 @@ import {schema} from './lib/server/schema';
 import {TopdeckClient} from './lib/server/topdeck';
 import {App} from './pages/_app';
 import {createContext} from './lib/server/context';
-import type { PreferencesMap } from './lib/client/cookies';
+import type {PreferencesMap} from './lib/client/cookies';
 
 function createDefaultPreferences(): PreferencesMap {
   return {
@@ -59,13 +59,13 @@ function parseCookies(cookieHeader: string): {
     try {
       const decoded = decodeURIComponent(cookies.sitePreferences);
       const parsed = JSON.parse(decoded);
-      preferences = { ...preferences, ...parsed };
+      preferences = {...preferences, ...parsed};
     } catch (error) {
       console.warn('❌ Failed to parse site preferences:', error);
     }
   }
 
-  return { cookies, preferences };
+  return {cookies, preferences};
 }
 
 const cookieCache = new WeakMap<Request, ReturnType<typeof parseCookies>>();
@@ -107,7 +107,7 @@ export function useCreateHandler(
         const parsed = JSON.parse(body);
 
         if (parsed.extensions?.sitePreferences) {
-          preferences = { ...preferences, ...parsed.extensions.sitePreferences };
+          preferences = {...preferences, ...parsed.extensions.sitePreferences};
         } else {
           const cookieHeader = request.headers.get('cookie') || '';
           const result = parseCookies(cookieHeader);
@@ -139,7 +139,7 @@ export function useCreateHandler(
     const env = createServerEnvironment(
       schema,
       persistedQueries,
-      preferences // Pass the full PreferencesMap
+      preferences, // Pass the full PreferencesMap
     );
 
     const RiverApp = await createRiverServerApp(

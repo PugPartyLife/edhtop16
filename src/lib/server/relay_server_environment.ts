@@ -27,11 +27,10 @@ export function createServerEnvironment(
       throw new Error(`Could not find source for query: ${request.id}`);
     }
 
-    
     const contextValue = createContext(
       topdeckClient,
-      preferences ?? { commanders: {} },
-      () => {} // no-op for setPreferences on server
+      preferences ?? {commanders: {}},
+      () => {}, // no-op for setPreferences on server
     );
 
     // console.log(

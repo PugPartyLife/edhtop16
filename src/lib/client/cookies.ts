@@ -55,9 +55,7 @@ const DEFAULT_PREFERENCES: PreferencesMap = {
 
 let refetchCallback: ((prefs?: any) => void) | undefined = undefined;
 
-export function setRefetchCallback(
-  callback?: (prefs?: any) => void,
-) {
+export function setRefetchCallback(callback?: (prefs?: any) => void) {
   refetchCallback = callback;
 }
 
@@ -72,7 +70,9 @@ function getCookie(name: string): string | null {
     if (parts.length === 2) {
       return parts.pop()?.split(';').shift() || null;
     }
-  } catch (error) {}
+  } catch (error) {
+    console.error('Failed to get cookie:', error);
+  }
   return null;
 }
 
@@ -81,14 +81,17 @@ function setCookie(name: string, value: string, days: number = 365) {
     const expires = new Date();
     expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
     document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`;
-  } catch (error) {}
+  } catch (error) {
+    console.error('Failed to set cookie:', error);
+  }
 }
 
 export function usePreferences<K extends keyof PreferencesMap>(
   key: K,
-  defaultPrefs: PreferencesMap[K]
+  defaultPrefs: PreferencesMap[K],
 ) {
-  const [preferences, setPreferences] = useState<PreferencesMap[K]>(defaultPrefs);
+  const [preferences, setPreferences] =
+    useState<PreferencesMap[K]>(defaultPrefs);
   const [isHydrated, setIsHydrated] = useState(false);
   const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasHydratedRef = useRef(false);
@@ -103,19 +106,24 @@ export function usePreferences<K extends keyof PreferencesMap>(
     const cookieValue = getCookie('sitePreferences');
     if (cookieValue) {
       try {
-        allPrefs = {...allPrefs, ...JSON.parse(decodeURIComponent(cookieValue))};
-      } catch (error) {}
+        allPrefs = {
+          ...allPrefs,
+          ...JSON.parse(decodeURIComponent(cookieValue)),
+        };
+      } catch (error) {
+        console.error('Failed to parse cookie:', error);
+      }
     }
     const serverPrefs = allPrefs[key] || defaultPrefs;
 
     if (JSON.stringify(preferences) !== JSON.stringify(serverPrefs)) {
       setPreferences(serverPrefs);
-      updateRelayPreferences({ [key]: serverPrefs }); // <-- wrap in object with key
+      updateRelayPreferences({[key]: serverPrefs}); // <-- wrap in object with key
       setTimeout(() => {
         refetchCallback?.(serverPrefs);
       }, 100);
     } else {
-      updateRelayPreferences({ [key]: serverPrefs }); // <-- wrap in object with key
+      updateRelayPreferences({[key]: serverPrefs}); // <-- wrap in object with key
     }
   }, [preferences, key, defaultPrefs]);
 
@@ -134,12 +142,17 @@ export function usePreferences<K extends keyof PreferencesMap>(
         const cookieValue = getCookie('sitePreferences');
         if (cookieValue) {
           try {
-            allPrefs = {...allPrefs, ...JSON.parse(decodeURIComponent(cookieValue))};
-          } catch (error) {}
+            allPrefs = {
+              ...allPrefs,
+              ...JSON.parse(decodeURIComponent(cookieValue)),
+            };
+          } catch (error) {
+            console.error('Failed to parse cookie:', error);
+          }
         }
         allPrefs[key] = newPrefs;
         setCookie('sitePreferences', JSON.stringify(allPrefs));
-        updateRelayPreferences({ [key]: newPrefs });
+        updateRelayPreferences({[key]: newPrefs});
 
         if (refetchTimeoutRef.current) {
           clearTimeout(refetchTimeoutRef.current);
@@ -156,7 +169,7 @@ export function usePreferences<K extends keyof PreferencesMap>(
         return newPrefs;
       });
     },
-    [key]
+    [key],
   );
 
   return {preferences, updatePreference, isHydrated};
