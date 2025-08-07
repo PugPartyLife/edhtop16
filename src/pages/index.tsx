@@ -318,6 +318,19 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
   const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
   const hasRefetchedRef = useRef(false);
 
+  // Get server preferences directly from window (same as cookies.ts does)
+  const serverPreferences = useMemo(() => {
+    if (typeof window !== 'undefined' && (window as any).__SERVER_PREFERENCES__) {
+      const prefs = (window as any).__SERVER_PREFERENCES__;
+      console.log('🏗️ [COMPONENT] Retrieved server preferences from window:', prefs);
+      return prefs;
+    }
+    console.log('🏗️ [COMPONENT] No server preferences found in window');
+    return null;
+  }, []);
+
+  console.log('🍪 [COMPONENT] Client preferences:', preferences);
+
   const query = usePreloadedQuery(
     graphql`
       query pages_CommandersQuery @preloadable {
@@ -354,6 +367,7 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
   const display = preferences.display || 'card';
 
   const handleRefetch = useCallback(() => {
+    console.log('🔄 Manual refetch triggered');
     startTransition(() => {
       refetch({}, { fetchPolicy: 'network-only' });
     });
@@ -371,43 +385,38 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
     return clearRefetchCallback;
   }, [handleRefetch]);
 
-  // Handle hydration refetch
+  // UPDATED: Simplified hydration - server already used correct preferences
   useEffect(() => {
     if (isHydrated && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
       
-      const serverDefaults = {
+      // Use server preferences as the baseline (what was actually rendered)
+      const actualServerPrefs = serverPreferences || {
         sortBy: 'CONVERSION',
         timePeriod: 'ONE_MONTH',
         minEntries: 0,
         minTournamentSize: 0,
         colorId: '',
+        display: 'card',
       };
       
-      // Only refetch if client preferences meaningfully differ from what server rendered
-      const needsRefetch = (
-        (preferences.sortBy && preferences.sortBy !== serverDefaults.sortBy) ||
-        (preferences.timePeriod && preferences.timePeriod !== serverDefaults.timePeriod) ||
-        (preferences.minEntries !== undefined && preferences.minEntries !== serverDefaults.minEntries) ||
-        (preferences.minTournamentSize !== undefined && preferences.minTournamentSize !== serverDefaults.minTournamentSize) ||
-        (preferences.colorId && preferences.colorId !== serverDefaults.colorId)
-      );
+      // Compare client preferences with what server actually used
+      const prefsMatch = JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
       
       console.log('🔄 Hydration check:', {
-        preferences,
-        needsRefetch,
+        clientPrefs: preferences,
+        serverPrefs: actualServerPrefs,
+        prefsMatch,
       });
       
-      if (needsRefetch) {
-        console.log('🔄 Refetching due to preference difference');
-        startTransition(() => {
-          refetch({}, { fetchPolicy: 'network-only' });
-        });
+      if (!prefsMatch) {
+        console.log('🔄 Client preferences differ from server - refetch will be triggered by cookies.ts');
+        // Don't refetch here - let cookies.ts handle it through the refetchCallback
       } else {
-        console.log('🔄 No refetch needed');
+        console.log('🔄 No refetch needed - client and server preferences match');
       }
     }
-  }, [isHydrated, refetch]);
+  }, [isHydrated, preferences, serverPreferences]);
 
   const secondaryStatistic = preferences.sortBy === 'CONVERSION' ? 'topCuts' : 'count';
 

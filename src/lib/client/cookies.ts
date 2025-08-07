@@ -52,85 +52,57 @@ function setCookie(name: string, value: string, days: number = 365) {
   }
 }
 
-function getServerPreferences(): CommanderPreferences {
-  console.log('🍪 [INIT] Starting preference initialization...');
-  
-  try {
-    const metaTag = document?.querySelector('meta[name="commander-preferences"]');
-    if (metaTag) {
-      const content = metaTag.getAttribute('content');
-      console.log('🍪 [INIT] Meta tag content:', content);
-      
-      if (content) {
-        const serverPrefs = JSON.parse(decodeURIComponent(content));
-        console.log('🍪 [INIT] ✅ Using server preferences:', serverPrefs);
-        
-        metaTag.remove();
-        console.log('🍪 [INIT] Meta tag removed');
-        
-        return serverPrefs;
-      }
-    } else {
-      console.log('🍪 [INIT] No meta tag found - will use defaults');
-    }
-  } catch (error) {
-    console.log('🍪 [INIT] Document not available (SSR) - using defaults');
-  }
-  
-  console.log('🍪 [INIT] Using defaults:', DEFAULT_PREFERENCES);
-  return DEFAULT_PREFERENCES;
-}
-
-// Track if we've already initialized to prevent double calls
-let hasInitialized = false;
-
 export function useCommanderPreferences() {
-  const [preferences, setPreferences] = useState<CommanderPreferences>(() => {
-    // Only initialize once
-    if (hasInitialized) {
-      return DEFAULT_PREFERENCES;
-    }
-    hasInitialized = true;
-    return getServerPreferences();
-  });
+const [preferences, setPreferences] = useState<CommanderPreferences>(DEFAULT_PREFERENCES);
   
   const [isHydrated, setIsHydrated] = useState(false);
   const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasHydratedRef = useRef(false);
+  const initialServerPrefsRef = useRef<CommanderPreferences | null>(null);
+
+  // Store the initial server preferences
+useEffect(() => {
+  if (!initialServerPrefsRef.current) {
+    initialServerPrefsRef.current = preferences;
+  }
+}, [preferences]);
 
   useEffect(() => {
-    // Prevent double hydration
-    if (hasHydratedRef.current) return;
-    hasHydratedRef.current = true;
-    
-    setIsHydrated(true);
-    
-    // Check if we need to load from cookies
-    const isUsingDefaults = JSON.stringify(preferences) === JSON.stringify(DEFAULT_PREFERENCES);
-    
-    if (isUsingDefaults) {
-      const cookieValue = getCookie('commanderPreferences');
-      if (cookieValue) {
-        try {
-          const savedPrefs = JSON.parse(decodeURIComponent(cookieValue));
-          console.log('🍪 Post-hydration: Found preferences in cookies:', savedPrefs);
-          
-          const mergedPrefs = { ...DEFAULT_PREFERENCES, ...savedPrefs };
-          setPreferences(mergedPrefs);
-          updateRelayPreferences(mergedPrefs);
-        } catch (error) {
-          console.warn('❌ Post-hydration: Failed to parse preferences:', error);
-          updateRelayPreferences(DEFAULT_PREFERENCES);
-        }
-      } else {
-        console.log('🍪 Post-hydration: No cookies found, using defaults');
-        updateRelayPreferences(DEFAULT_PREFERENCES);
+  if (hasHydratedRef.current) return;
+  hasHydratedRef.current = true;
+
+  setIsHydrated(true);
+
+  let serverPrefs = DEFAULT_PREFERENCES;
+
+  if (typeof window !== 'undefined' && (window as any).__SERVER_PREFERENCES__) {
+    serverPrefs = (window as any).__SERVER_PREFERENCES__;
+    console.log('🍪 [HYDRATE] Using server-injected preferences:', serverPrefs);
+    delete (window as any).__SERVER_PREFERENCES__;
+  } else {
+    const cookieValue = getCookie('commanderPreferences');
+    if (cookieValue) {
+      try {
+        serverPrefs = { ...DEFAULT_PREFERENCES, ...JSON.parse(decodeURIComponent(cookieValue)) };
+        console.log('🍪 [HYDRATE] Using cookie preferences:', serverPrefs);
+      } catch (error) {
+        console.warn('❌ [HYDRATE] Failed to parse cookies:', error);
       }
-    } else {
-      console.log('🍪 Post-hydration: Using server preferences:', preferences);
-      updateRelayPreferences(preferences);
     }
-  }, []); // Empty dependency array
+  }
+
+  // Only update and refetch if different from current state
+  if (JSON.stringify(preferences) !== JSON.stringify(serverPrefs)) {
+    setPreferences(serverPrefs);
+    updateRelayPreferences(serverPrefs);
+    setTimeout(() => {
+      refetchCallback?.(serverPrefs);
+    }, 100);
+  } else {
+    updateRelayPreferences(serverPrefs);
+    // Do NOT call refetchCallback here!
+  }
+}, [preferences]);
 
   const updatePreference = useCallback((key: keyof CommanderPreferences, value: any) => {
     console.log('🍪 updatePreference called:', key, '=', value);

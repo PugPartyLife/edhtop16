@@ -1,13 +1,14 @@
 import {Environment, Network, RecordSource, Store} from 'relay-runtime';
 import type {CommanderPreferences} from './cookies';
 
-let relayCommanderPreferences: CommanderPreferences = {};
+// Rename for clarity
+let currentPreferences: CommanderPreferences = {};
 
 const requestCache = new Map<string, Promise<any>>();
 
 export function createClientNetwork() {
   return Network.create(async (params, variables) => {
-    const cacheKey = `${params.id || params.name}-${JSON.stringify(variables)}-${JSON.stringify(relayCommanderPreferences)}`;
+    const cacheKey = `${params.id || params.name}-${JSON.stringify(variables)}-${JSON.stringify(currentPreferences)}`;
     
     if (requestCache.has(cacheKey)) {
       console.log('🚀 Using cached request for:', params.name);
@@ -21,8 +22,9 @@ export function createClientNetwork() {
         query: params.text,
         id: params.id,
         variables,
+        // Include current preferences in extensions for server context
         extensions: {
-          commanderPreferences: relayCommanderPreferences,
+          commanderPreferences: currentPreferences,
         },
       };
       
@@ -63,12 +65,15 @@ export function getClientEnvironment() {
   return clientEnv;
 }
 
+// Updated function name and added logging
 export function updateRelayPreferences(prefs: CommanderPreferences) {
-  relayCommanderPreferences = {...prefs};
+  currentPreferences = {...prefs};
+  console.log('🔄 Relay preferences updated:', currentPreferences);
 }
 
+// Updated function name
 export function getRelayPreferences(): CommanderPreferences {
-  return relayCommanderPreferences;
+  return currentPreferences;
 }
 
 export default getClientEnvironment();

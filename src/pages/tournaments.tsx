@@ -126,7 +126,8 @@ function TournamentsPageShell({
     setLocalMinSize(minSize && parseInt(minSize, 10) > 0 ? minSize : '');
   }, [minSize]);
 
-  const debouncedMinSizeUpdate = useCallback(
+const debouncedMinSizeUpdate = useMemo(
+  () =>
     debounce((value: string) => {
       if (value === '') {
         replaceRoute('/tournaments', {minSize: 0});
@@ -137,8 +138,8 @@ function TournamentsPageShell({
         }
       }
     }, 300),
-    [replaceRoute],
-  );
+  [replaceRoute],
+);
 
   const handleMinSizeChange = useCallback(
     (value: string) => {

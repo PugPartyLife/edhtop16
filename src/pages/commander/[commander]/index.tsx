@@ -19,6 +19,7 @@ import {
   useEffect,
   useCallback,
   startTransition,
+  useMemo,
 } from 'react';
 import {
   EntryPointComponent,
@@ -277,7 +278,8 @@ export function CommanderPageShell({
     setLocalMaxStanding(maxStanding?.toString() || '');
   }, [maxStanding]);
 
-  const debouncedEventSizeUpdate = useCallback(
+const debouncedEventSizeUpdate = useMemo(
+  () =>
     debounce((value: string) => {
       if (value === '') {
         replaceRoute('/commander/:commander', {
@@ -294,10 +296,11 @@ export function CommanderPageShell({
         }
       }
     }, 300),
-    [commander.name, replaceRoute],
-  );
+  [commander.name, replaceRoute],
+);
 
-  const debouncedMaxStandingUpdate = useCallback(
+  const debouncedMaxStandingUpdate = useMemo(
+    () =>
     debounce((value: string) => {
       if (value === '') {
         replaceRoute('/commander/:commander', {

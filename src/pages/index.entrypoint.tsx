@@ -12,12 +12,14 @@ export const entrypoint: EntryPoint<
 > = {
   root: JSResource.fromModuleId('m#index'),
   getPreloadProps() {
-    // Your GraphQL query doesn't accept any variables, so pass an empty object
+    
+    console.log('🍪 [SERVER] Using server defaults - cookies will be handled client-side');
+    
     return {
       queries: {
         commandersQueryRef: {
           parameters: CommandersQueryParameters,
-          variables: {}, // Empty object - no variables needed
+          variables: {}, // Empty variables - let client handle preferences
         },
       },
     };
