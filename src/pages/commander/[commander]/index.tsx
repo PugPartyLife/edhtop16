@@ -149,12 +149,12 @@ function CommanderBanner(props: {commander: Commander_CommanderBanner$key}) {
         }
 
         stats {
-  conversionRate
-  topCuts
-  count
-  metaShare
-  topCutBias
-}
+          conversionRate
+          topCuts
+          count
+          metaShare
+          topCutBias
+        }
       }
     `,
     props.commander,
@@ -278,45 +278,45 @@ export function CommanderPageShell({
     setLocalMaxStanding(maxStanding?.toString() || '');
   }, [maxStanding]);
 
-const debouncedEventSizeUpdate = useMemo(
-  () =>
-    debounce((value: string) => {
-      if (value === '') {
-        replaceRoute('/commander/:commander', {
-          commander: commander.name,
-          minEventSize: null,
-        });
-      } else {
-        const numValue = parseInt(value, 10);
-        if (!isNaN(numValue) && numValue >= 0) {
+  const debouncedEventSizeUpdate = useMemo(
+    () =>
+      debounce((value: string) => {
+        if (value === '') {
           replaceRoute('/commander/:commander', {
             commander: commander.name,
-            minEventSize: numValue,
+            minEventSize: null,
           });
+        } else {
+          const numValue = parseInt(value, 10);
+          if (!isNaN(numValue) && numValue >= 0) {
+            replaceRoute('/commander/:commander', {
+              commander: commander.name,
+              minEventSize: numValue,
+            });
+          }
         }
-      }
-    }, 300),
-  [commander.name, replaceRoute],
-);
+      }, 300),
+    [commander.name, replaceRoute],
+  );
 
   const debouncedMaxStandingUpdate = useMemo(
     () =>
-    debounce((value: string) => {
-      if (value === '') {
-        replaceRoute('/commander/:commander', {
-          commander: commander.name,
-          maxStanding: null,
-        });
-      } else {
-        const numValue = parseInt(value, 10);
-        if (!isNaN(numValue) && numValue >= 1) {
+      debounce((value: string) => {
+        if (value === '') {
           replaceRoute('/commander/:commander', {
             commander: commander.name,
-            maxStanding: numValue,
+            maxStanding: null,
           });
+        } else {
+          const numValue = parseInt(value, 10);
+          if (!isNaN(numValue) && numValue >= 1) {
+            replaceRoute('/commander/:commander', {
+              commander: commander.name,
+              maxStanding: numValue,
+            });
+          }
         }
-      }
-    }, 300),
+      }, 300),
     [commander.name, replaceRoute],
   );
 

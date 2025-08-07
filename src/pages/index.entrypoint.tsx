@@ -12,9 +12,10 @@ export const entrypoint: EntryPoint<
 > = {
   root: JSResource.fromModuleId('m#index'),
   getPreloadProps() {
-    
-    console.log('🍪 [SERVER] Using server defaults - cookies will be handled client-side');
-    
+    // console.log(
+    //   '🍪 [SERVER] Using server defaults - cookies will be handled client-side',
+    // );
+
     return {
       queries: {
         commandersQueryRef: {

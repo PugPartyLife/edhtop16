@@ -13,38 +13,43 @@ import {Entry} from './entry';
 import {FirstPartyPromoRef, getActivePromotions} from './promo';
 import {minDateFromTimePeriod, TimePeriod, type TimePeriodType} from './types';
 
-const queryCache = new Map<string, { data: any, timestamp: number }>();
+const queryCache = new Map<string, {data: any; timestamp: number}>();
 const CACHE_TTL = 60000; // 1 minute
 const MAX_CACHE_SIZE = 100; // Maximum number of cached queries
 
 function cleanupCache() {
   const now = Date.now();
   const keysToDelete: string[] = [];
-  
+
   for (const [key, value] of queryCache.entries()) {
     if (now - value.timestamp > CACHE_TTL) {
       keysToDelete.push(key);
     }
   }
-  
-  keysToDelete.forEach(key => queryCache.delete(key));
-  
+
+  keysToDelete.forEach((key) => queryCache.delete(key));
+
   if (queryCache.size > MAX_CACHE_SIZE) {
-    const entries = Array.from(queryCache.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp);
-    
+    const entries = Array.from(queryCache.entries()).sort(
+      (a, b) => a[1].timestamp - b[1].timestamp,
+    );
+
     const toRemove = entries.slice(0, queryCache.size - MAX_CACHE_SIZE);
     toRemove.forEach(([key]) => queryCache.delete(key));
   }
-  
-  console.log(`🧹 Cache cleanup: ${keysToDelete.length} expired, ${queryCache.size} remaining`);
+
+  // console.log(
+  //   `🧹 Cache cleanup: ${keysToDelete.length} expired, ${queryCache.size} remaining`,
+  // );
 }
 
-const isGenerationMode = process.argv.some(arg => 
-  arg.includes('generate') || 
-  arg.includes('build') || 
-  arg.includes('schema')
-) || process.env.npm_lifecycle_event?.includes('generate');  // generate:schema hangs without this cause of node...
+const isGenerationMode =
+  process.argv.some(
+    (arg) =>
+      arg.includes('generate') ||
+      arg.includes('build') ||
+      arg.includes('schema'),
+  ) || process.env.npm_lifecycle_event?.includes('generate'); // generate:schema hangs without this cause of node...
 
 if (!isGenerationMode) {
   setInterval(cleanupCache, 5 * 60 * 1000);
@@ -105,11 +110,12 @@ Commander.implement({
       byPath: true,
       resolve: (parent) => parent.id,
       load: async (commanderIds: number[], ctx) => {
-        // Use the same parameters from the context that the commanders query used
         const sortBy = ctx.commanderPreferences.sortBy ?? 'CONVERSION';
-        const timePeriod = (ctx.commanderPreferences.timePeriod ?? 'ONE_MONTH') as TimePeriodType;
+        const timePeriod = (ctx.commanderPreferences.timePeriod ??
+          'ONE_MONTH') as TimePeriodType;
         const minEntries = ctx.commanderPreferences.minEntries ?? 0;
-        const minTournamentSize = ctx.commanderPreferences.minTournamentSize ?? 0;
+        const minTournamentSize =
+          ctx.commanderPreferences.minTournamentSize ?? 0;
         const colorId = ctx.commanderPreferences.colorId;
 
         const minDate = minDateFromTimePeriod(timePeriod);
@@ -159,7 +165,11 @@ Commander.implement({
                     eb.fn.sum<number>(
                       eb
                         .case()
-                        .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
+                        .when(
+                          'Entry.standing',
+                          '<=',
+                          eb.ref('Tournament.topCut'),
+                        )
                         .then(1)
                         .else(0)
                         .end(),
@@ -519,7 +529,9 @@ builder.queryField('commanders', (t) =>
         timestamp: Date.now(),
       });
 
-      console.log(`💾 Cached commanders query result (cache size: ${queryCache.size})`);
+      // console.log(
+      //   `💾 Cached commanders query result (cache size: ${queryCache.size})`,
+      // );
 
       return result;
     },
@@ -545,5 +557,3 @@ const CommanderStats = builder
       metaShare: t.exposeFloat('metaShare'),
     }),
   });
-
-

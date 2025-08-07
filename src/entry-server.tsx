@@ -17,7 +17,6 @@ import {schema} from './lib/server/schema';
 import {TopdeckClient} from './lib/server/topdeck';
 import {App} from './pages/_app';
 import {createContext} from './lib/server/context';
-import type {CommanderPreferences} from './lib/client/cookies';
 
 function createDefaultPreferences() {
   return {
@@ -30,18 +29,18 @@ function createDefaultPreferences() {
   };
 }
 
-function parseCookies(cookieHeader: string): { 
-  cookies: Record<string, string>, 
-  commanderPreferences: ReturnType<typeof createDefaultPreferences>
+function parseCookies(cookieHeader: string): {
+  cookies: Record<string, string>;
+  commanderPreferences: ReturnType<typeof createDefaultPreferences>;
 } {
-  console.log('🍪 Raw cookie header:', cookieHeader);
-  
+  // console.log('🍪 Raw cookie header:', cookieHeader);
+
   const cookies: Record<string, string> = {};
-  
+
   if (!cookieHeader) {
-    return { 
-      cookies, 
-      commanderPreferences: createDefaultPreferences()
+    return {
+      cookies,
+      commanderPreferences: createDefaultPreferences(),
     };
   }
 
@@ -51,36 +50,39 @@ function parseCookies(cookieHeader: string): {
       cookies[name] = value;
     }
   });
-  
+
   let commanderPreferences = createDefaultPreferences();
-  
+
   if (cookies.commanderPreferences) {
     try {
       const decoded = decodeURIComponent(cookies.commanderPreferences);
-      console.log('🍪 Decoded cookie value:', decoded);
+      // console.log('🍪 Decoded cookie value:', decoded);
       const parsed = JSON.parse(decoded);
-      console.log('🍪 Parsed cookie object:', parsed);
-      
+      // console.log('🍪 Parsed cookie object:', parsed);
+
       commanderPreferences = {
         sortBy: parsed.sortBy ?? 'CONVERSION',
-        timePeriod: parsed.timePeriod ?? 'ONE_MONTH', 
+        timePeriod: parsed.timePeriod ?? 'ONE_MONTH',
         display: parsed.display ?? 'card',
         minEntries: parsed.minEntries ?? 0,
         minTournamentSize: parsed.minTournamentSize ?? 0,
         colorId: parsed.colorId ?? '',
       };
-      console.log('🍪 Final server preferences:', commanderPreferences);
+      // console.log('🍪 Final server preferences:', commanderPreferences);
     } catch (error) {
       console.warn('❌ Failed to parse commander preferences:', error);
     }
   }
-  
-  return { cookies, commanderPreferences };
+
+  return {cookies, commanderPreferences};
 }
 
 const cookieCache = new WeakMap<Request, ReturnType<typeof parseCookies>>();
-// Add this at the top level to store preferences per request
-const requestPreferencesCache = new WeakMap<Request, ReturnType<typeof createDefaultPreferences>>();
+
+const requestPreferencesCache = new WeakMap<
+  Request,
+  ReturnType<typeof createDefaultPreferences>
+>();
 
 export function useCreateHandler(
   template: string,
@@ -99,14 +101,12 @@ export function useCreateHandler(
       }),
     ],
     context: async ({request}) => {
-      // Check if we already have preferences for this request
       if (requestPreferencesCache.has(request)) {
         const cachedPrefs = requestPreferencesCache.get(request)!;
-        console.log('🔄 GraphQL Context: Using cached preferences for request');
+        // console.log('🔄 GraphQL Context: Using cached preferences for request');
         return createContext(cachedPrefs);
       }
 
-      // Check cookie cache first
       if (cookieCache.has(request)) {
         const cached = cookieCache.get(request)!;
         const prefs = cached.commanderPreferences;
@@ -121,7 +121,7 @@ export function useCreateHandler(
         const parsed = JSON.parse(body);
 
         if (parsed.extensions?.commanderPreferences) {
-          console.log('🔄 GraphQL Context: Using preferences from extensions');
+          // console.log('🔄 GraphQL Context: Using preferences from extensions');
           const extPrefs = parsed.extensions.commanderPreferences;
           commanderPreferences = {
             sortBy: extPrefs.sortBy ?? 'CONVERSION',
@@ -132,18 +132,17 @@ export function useCreateHandler(
             colorId: extPrefs.colorId ?? '',
           };
         } else {
-          console.log('🔄 GraphQL Context: Using preferences from cookies');
+          // console.log('🔄 GraphQL Context: Using preferences from cookies');
           const cookieHeader = request.headers.get('cookie') || '';
           const result = parseCookies(cookieHeader);
           commanderPreferences = result.commanderPreferences;
-          
+
           cookieCache.set(request, result);
         }
       } catch (error) {
         console.warn('❌ GraphQL Context: Failed to parse preferences:', error);
       }
 
-      // Cache the preferences for this request
       requestPreferencesCache.set(request, commanderPreferences);
       return createContext(commanderPreferences);
     },
@@ -152,17 +151,19 @@ export function useCreateHandler(
   const entryPointHandler: express.Handler = async (req, res) => {
     const head = createHead();
 
-    // Get preferences - check cache first, then parse cookies
     let commanderPreferences: ReturnType<typeof createDefaultPreferences>;
-    
+
     if (requestPreferencesCache.has(req as any)) {
       commanderPreferences = requestPreferencesCache.get(req as any)!;
-      console.log('🏗️ SSR: Using cached preferences:', commanderPreferences);
+      // console.log('🏗️ SSR: Using cached preferences:', commanderPreferences);
     } else {
       const result = parseCookies(req.headers.cookie || '');
       commanderPreferences = result.commanderPreferences; // Use the EXACT same object
       requestPreferencesCache.set(req as any, commanderPreferences); // Cache it
-      console.log('🏗️ SSR: Using preferences from cookies:', commanderPreferences);
+      // console.log(
+      //   '🏗️ SSR: Using preferences from cookies:',
+      //   commanderPreferences,
+      // );
     }
 
     const env = createServerEnvironment(
@@ -208,16 +209,25 @@ export function useCreateHandler(
   window.__SERVER_PREFERENCES__ = ${JSON.stringify(commanderPreferences)};
 </script>`;
 
-  console.log('🔍 [DEBUG] About to inject preferences script');
-  console.log('🔍 [DEBUG] Preferences to inject:', commanderPreferences);
-  console.log('🔍 [DEBUG] HTML contains </head>?', renderedHtml.includes('</head>'));
+    // console.log('🔍 [DEBUG] About to inject preferences script');
+    // console.log('🔍 [DEBUG] Preferences to inject:', commanderPreferences);
+    // console.log(
+    //   '🔍 [DEBUG] HTML contains </head>?',
+    //   renderedHtml.includes('</head>'),
+    // );
 
-  const htmlWithPreferences = renderedHtml.replace('</head>', `${preferencesScript}\n</head>`);
-  
-  console.log('🔍 [DEBUG] After injection, HTML contains script?', htmlWithPreferences.includes('window.__SERVER_PREFERENCES__'));
+    const htmlWithPreferences = renderedHtml.replace(
+      '</head>',
+      `${preferencesScript}\n</head>`,
+    );
 
-  res.status(200).set({'Content-Type': 'text/html'}).end(htmlWithPreferences);
-};
+    // console.log(
+    //   '🔍 [DEBUG] After injection, HTML contains script?',
+    //   htmlWithPreferences.includes('window.__SERVER_PREFERENCES__'),
+    // );
+
+    res.status(200).set({'Content-Type': 'text/html'}).end(htmlWithPreferences);
+  };
 
   const r = express.Router();
   r.use('/api/graphql', graphqlHandler);
@@ -227,4 +237,3 @@ export function useCreateHandler(
 
   return r;
 }
-

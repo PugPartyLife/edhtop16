@@ -1,6 +1,4 @@
-import {
-  pages_CommandersQuery,
-} from '#genfiles/queries/pages_CommandersQuery.graphql';
+import {pages_CommandersQuery} from '#genfiles/queries/pages_CommandersQuery.graphql';
 import {pages_topCommanders$key} from '#genfiles/queries/pages_topCommanders.graphql';
 import {pages_TopCommandersCard$key} from '#genfiles/queries/pages_TopCommandersCard.graphql';
 import {TopCommandersQuery} from '#genfiles/queries/TopCommandersQuery.graphql';
@@ -29,7 +27,7 @@ import {
   useCommanderPreferences,
   setRefetchCallback,
   clearRefetchCallback,
-  CommanderPreferences
+  CommanderPreferences,
 } from '../lib/client/cookies';
 import {ColorIdentity} from '../assets/icons/colors';
 import {Card} from '../components/card';
@@ -41,7 +39,10 @@ import {NumberInputDropdown} from '../components/number_input_dropdown';
 import {Dropdown} from '../components/dropdown';
 import {formatPercent} from '../lib/client/format';
 
-const debounce = <T extends (...args: any[]) => any>(func: T, delay: number): T => {
+const debounce = <T extends (...args: any[]) => any>(
+  func: T,
+  delay: number,
+): T => {
   let timeoutId: NodeJS.Timeout;
   return ((...args: any[]) => {
     clearTimeout(timeoutId);
@@ -85,36 +86,50 @@ const TopCommandersCard = React.memo(function TopCommandersCard({
     return `Conversion Rate: ${formatPercent(commander.stats.conversionRate)} / Top Cuts: ${commander.stats.topCuts}`;
   }, [commander.stats, secondaryStatistic]);
 
-  const images = useMemo(() => 
-    commander.cards.flatMap((c) => c.imageUrls).map((img) => ({
-      src: img,
-      alt: `${commander.name} card art`,
-    }))
-  , [commander.cards, commander.name]);
+  const images = useMemo(
+    () =>
+      commander.cards
+        .flatMap((c) => c.imageUrls)
+        .map((img) => ({
+          src: img,
+          alt: `${commander.name} card art`,
+        })),
+    [commander.cards, commander.name],
+  );
 
   if (display === 'table') {
     return (
       <div className="grid w-full grid-cols-[130px_1fr] items-center gap-x-2 overflow-x-hidden rounded-sm bg-[#312d5a]/50 p-4 text-white shadow-md lg:grid-cols-[130px_minmax(350px,1fr)_100px_100px_100px_100px]">
         <ColorIdentity identity={commander.colorId} />
-        <Link href={commander.breakdownUrl} className="font-title mb-2 text-xl underline lg:mb-0 lg:font-sans lg:text-base">
+        <Link
+          href={commander.breakdownUrl}
+          className="font-title mb-2 text-xl underline lg:mb-0 lg:font-sans lg:text-base"
+        >
           {commander.name}
         </Link>
         <div className="text-sm opacity-75 lg:hidden">Entries:</div>
         <div className="text-sm">{commander.stats.count}</div>
         <div className="text-sm opacity-75 lg:hidden">Meta Share:</div>
-        <div className="text-sm">{formatPercent(commander.stats.metaShare)}</div>
+        <div className="text-sm">
+          {formatPercent(commander.stats.metaShare)}
+        </div>
         <div className="text-sm opacity-75 lg:hidden">Top Cuts:</div>
         <div className="text-sm">{commander.stats.topCuts}</div>
         <div className="text-sm opacity-75 lg:hidden">Conversion Rate:</div>
-        <div className="text-sm">{formatPercent(commander.stats.conversionRate)}</div>
+        <div className="text-sm">
+          {formatPercent(commander.stats.conversionRate)}
+        </div>
       </div>
     );
   }
-  
+
   return (
     <Card bottomText={commanderStats} images={images}>
       <div className="flex h-32 flex-col space-y-2">
-        <Link href={commander.breakdownUrl} className="text-xl font-bold underline decoration-transparent transition-colors group-hover:decoration-inherit">
+        <Link
+          href={commander.breakdownUrl}
+          className="text-xl font-bold underline decoration-transparent transition-colors group-hover:decoration-inherit"
+        >
           {commander.name}
         </Link>
         <ColorIdentity identity={commander.colorId} />
@@ -129,31 +144,40 @@ function CommandersPageShell({
   colorId,
   minEntries,
   minTournamentSize,
-  display, 
-  updatePreference, 
-  preferences, 
+  display,
+  updatePreference,
+  preferences,
   children,
 }: PropsWithChildren<{
   colorId: string;
   minEntries?: number | null;
   minTournamentSize?: number | null;
   sortBy: 'CONVERSION' | 'POPULARITY';
-  timePeriod: 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'ALL_TIME' | 'POST_BAN';
-  display: 'card' | 'table'; 
-  updatePreference: (key: keyof CommanderPreferences, value: any) => void; 
-  preferences: CommanderPreferences; 
+  timePeriod:
+    | 'ONE_MONTH'
+    | 'THREE_MONTHS'
+    | 'SIX_MONTHS'
+    | 'ONE_YEAR'
+    | 'ALL_TIME'
+    | 'POST_BAN';
+  display: 'card' | 'table';
+  updatePreference: (key: keyof CommanderPreferences, value: any) => void;
+  preferences: CommanderPreferences;
 }>) {
   useSeoMeta({
     title: 'cEDH Commanders',
     description: 'Discover top performing commanders in cEDH!',
   });
 
-  const [localMinEntries, setLocalMinEntries] = useState(minEntries?.toString() || '');
+  const [localMinEntries, setLocalMinEntries] = useState(
+    minEntries?.toString() || '',
+  );
   const [localEventSize, setLocalEventSize] = useState(
-    minTournamentSize && minTournamentSize > 0 ? minTournamentSize.toString() : ''
+    minTournamentSize && minTournamentSize > 0
+      ? minTournamentSize.toString()
+      : '',
   );
 
-  // Create debounced updaters
   const debouncedUpdaters = useRef({
     minEntries: debounce((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
@@ -169,23 +193,26 @@ function CommandersPageShell({
     }, 150),
   }).current;
 
-  // Update local state when props change
   useEffect(() => {
     setLocalMinEntries(minEntries?.toString() || '');
-    setLocalEventSize(minTournamentSize && minTournamentSize > 0 ? minTournamentSize.toString() : '');
+    setLocalEventSize(
+      minTournamentSize && minTournamentSize > 0
+        ? minTournamentSize.toString()
+        : '',
+    );
   }, [minEntries, minTournamentSize]);
 
-const getTimePeriodLabel = (period: string) => {
-  const labels: { [key: string]: string } = {
-    'ONE_MONTH': '1 Month',
-    'THREE_MONTHS': '3 Months', 
-    'SIX_MONTHS': '6 Months',
-    'ONE_YEAR': '1 Year',
-    'ALL_TIME': 'All Time',
-    'POST_BAN': 'Post Ban'
+  const getTimePeriodLabel = (period: string) => {
+    const labels: {[key: string]: string} = {
+      ONE_MONTH: '1 Month',
+      THREE_MONTHS: '3 Months',
+      SIX_MONTHS: '6 Months',
+      ONE_YEAR: '1 Year',
+      ALL_TIME: 'All Time',
+      POST_BAN: 'Post Ban',
+    };
+    return labels[period] || '1 Month';
   };
-  return labels[period] || '1 Month';
-};
 
   return (
     <>
@@ -196,15 +223,30 @@ const getTimePeriodLabel = (period: string) => {
           <h1 className="font-title mb-8 flex-1 text-5xl font-extrabold text-white lg:mb-0">
             cEDH Metagame Breakdown
           </h1>
-          <button className="cursor-pointer" onClick={() => updatePreference('display', display === 'table' ? 'card' : 'table')}>
-            {display === 'card' ? <TableCellsIcon className="h-6 w-6 text-white" /> : <RectangleStackIcon className="h-6 w-6 text-white" />}
+          <button
+            className="cursor-pointer"
+            onClick={() =>
+              updatePreference(
+                'display',
+                display === 'table' ? 'card' : 'table',
+              )
+            }
+          >
+            {display === 'card' ? (
+              <TableCellsIcon className="h-6 w-6 text-white" />
+            ) : (
+              <RectangleStackIcon className="h-6 w-6 text-white" />
+            )}
           </button>
         </div>
 
         {/* Filters */}
         <div className="mb-8 flex flex-col items-start space-y-4 lg:flex-row lg:items-end lg:space-y-0">
           <div className="flex-1">
-            <ColorSelection selected={colorId} onChange={(value) => updatePreference('colorId', value)} />
+            <ColorSelection
+              selected={colorId}
+              onChange={(value) => updatePreference('colorId', value)}
+            />
           </div>
 
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-4 lg:flex-nowrap lg:justify-end">
@@ -212,10 +254,14 @@ const getTimePeriodLabel = (period: string) => {
               <Dropdown
                 id="commanders-sort-by"
                 label="Sort By"
-                value={preferences.sortBy === 'POPULARITY' ? 'Most Popular' : 'Top Performing'}
+                value={
+                  preferences.sortBy === 'POPULARITY'
+                    ? 'Most Popular'
+                    : 'Top Performing'
+                }
                 options={[
-                  { value: 'CONVERSION' as const, label: 'Top Performing' },
-                  { value: 'POPULARITY' as const, label: 'Most Popular' },
+                  {value: 'CONVERSION' as const, label: 'Top Performing'},
+                  {value: 'POPULARITY' as const, label: 'Most Popular'},
                 ]}
                 onSelect={(value) => updatePreference('sortBy', value)}
               />
@@ -227,12 +273,12 @@ const getTimePeriodLabel = (period: string) => {
                 label="Time Period"
                 value={getTimePeriodLabel(preferences.timePeriod || timePeriod)}
                 options={[
-                  { value: 'ONE_MONTH' as const, label: '1 Month' },
-                  { value: 'THREE_MONTHS' as const, label: '3 Months' },
-                  { value: 'SIX_MONTHS' as const, label: '6 Months' },
-                  { value: 'ONE_YEAR' as const, label: '1 Year' },
-                  { value: 'ALL_TIME' as const, label: 'All Time' },
-                  { value: 'POST_BAN' as const, label: 'Post Ban' },
+                  {value: 'ONE_MONTH' as const, label: '1 Month'},
+                  {value: 'THREE_MONTHS' as const, label: '3 Months'},
+                  {value: 'SIX_MONTHS' as const, label: '6 Months'},
+                  {value: 'ONE_YEAR' as const, label: '1 Year'},
+                  {value: 'ALL_TIME' as const, label: 'All Time'},
+                  {value: 'POST_BAN' as const, label: 'Post Ban'},
                 ]}
                 onSelect={(value) => updatePreference('timePeriod', value)}
               />
@@ -247,11 +293,11 @@ const getTimePeriodLabel = (period: string) => {
                 min="1"
                 dropdownClassName="min-entries-dropdown"
                 options={[
-                  { value: null, label: 'All Entries' },
-                  { value: 20, label: '20+ Entries' },
-                  { value: 40, label: '40+ Entries' },
-                  { value: 60, label: '60+ Entries' },
-                  { value: 100, label: '100+ Entries' },
+                  {value: null, label: 'All Entries'},
+                  {value: 20, label: '20+ Entries'},
+                  {value: 40, label: '40+ Entries'},
+                  {value: 60, label: '60+ Entries'},
+                  {value: 100, label: '100+ Entries'},
                 ]}
                 onChange={(value) => {
                   setLocalMinEntries(value);
@@ -281,10 +327,10 @@ const getTimePeriodLabel = (period: string) => {
                 min="1"
                 dropdownClassName="event-size-dropdown"
                 options={[
-                  { value: null, label: 'All Tournaments' },
-                  { value: 30, label: '30+ - Medium Events' },
-                  { value: 60, label: '60+ - Large Events' },
-                  { value: 100, label: '100+ - Major Events' },
+                  {value: null, label: 'All Tournaments'},
+                  {value: 30, label: '30+ - Medium Events'},
+                  {value: 60, label: '60+ - Large Events'},
+                  {value: 100, label: '100+ - Major Events'},
                 ]}
                 onChange={(value) => {
                   setLocalEventSize(value);
@@ -314,22 +360,30 @@ const getTimePeriodLabel = (period: string) => {
 }
 
 /** @resource m#index */
-export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_CommandersQuery}, {}> = ({queries}) => {
+export const CommandersPage: EntryPointComponent<
+  {commandersQueryRef: pages_CommandersQuery},
+  {}
+> = ({queries}) => {
   const {preferences, updatePreference, isHydrated} = useCommanderPreferences();
   const hasRefetchedRef = useRef(false);
 
-  // Get server preferences directly from window (same as cookies.ts does)
   const serverPreferences = useMemo(() => {
-    if (typeof window !== 'undefined' && (window as any).__SERVER_PREFERENCES__) {
+    if (
+      typeof window !== 'undefined' &&
+      (window as any).__SERVER_PREFERENCES__
+    ) {
       const prefs = (window as any).__SERVER_PREFERENCES__;
-      console.log('🏗️ [COMPONENT] Retrieved server preferences from window:', prefs);
+      // console.log(
+      //   '🏗️ [COMPONENT] Retrieved server preferences from window:',
+      //   prefs,
+      // );
       return prefs;
     }
-    console.log('🏗️ [COMPONENT] No server preferences found in window');
+    // console.log('🏗️ [COMPONENT] No server preferences found in window');
     return null;
   }, []);
 
-  console.log('🍪 [COMPONENT] Client preferences:', preferences);
+  // console.log('🍪 [COMPONENT] Client preferences:', preferences);
 
   const query = usePreloadedQuery(
     graphql`
@@ -340,57 +394,56 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
     queries.commandersQueryRef,
   );
 
-  const {data, loadNext, isLoadingNext, hasNext, refetch} = usePaginationFragment<TopCommandersQuery, pages_topCommanders$key>(
-    graphql`
-      fragment pages_topCommanders on Query
-      @argumentDefinitions(
-        cursor: {type: "String"}
-        count: {type: "Int", defaultValue: 20}
-      )
-      @refetchable(queryName: "TopCommandersQuery") {
-        commanders(
-          first: $count
-          after: $cursor
-        ) @connection(key: "pages__commanders") {
-          edges {
-            node {
-              id
-              ...pages_TopCommandersCard
+  const {data, loadNext, isLoadingNext, hasNext, refetch} =
+    usePaginationFragment<TopCommandersQuery, pages_topCommanders$key>(
+      graphql`
+        fragment pages_topCommanders on Query
+        @argumentDefinitions(
+          cursor: {type: "String"}
+          count: {type: "Int", defaultValue: 20}
+        )
+        @refetchable(queryName: "TopCommandersQuery") {
+          commanders(first: $count, after: $cursor)
+            @connection(key: "pages__commanders") {
+            edges {
+              node {
+                id
+                ...pages_TopCommandersCard
+              }
             }
           }
         }
-      }
-    `,
-    query,
-  );
+      `,
+      query,
+    );
 
   const display = preferences.display || 'card';
 
   const handleRefetch = useCallback(() => {
-    console.log('🔄 Manual refetch triggered');
+    // console.log('🔄 Manual refetch triggered');
     startTransition(() => {
-      refetch({}, { fetchPolicy: 'network-only' });
+      refetch({}, {fetchPolicy: 'network-only'});
     });
   }, [refetch]);
 
-  const handleLoadMore = useCallback((count: number) => {
-    startTransition(() => {
-      loadNext(count);
-    });
-  }, [loadNext]);
+  const handleLoadMore = useCallback(
+    (count: number) => {
+      startTransition(() => {
+        loadNext(count);
+      });
+    },
+    [loadNext],
+  );
 
-  // Setup refetch callback
   useEffect(() => {
     setRefetchCallback(handleRefetch);
     return clearRefetchCallback;
   }, [handleRefetch]);
 
-  // UPDATED: Simplified hydration - server already used correct preferences
   useEffect(() => {
     if (isHydrated && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
-      
-      // Use server preferences as the baseline (what was actually rendered)
+
       const actualServerPrefs = serverPreferences || {
         sortBy: 'CONVERSION',
         timePeriod: 'ONE_MONTH',
@@ -399,26 +452,30 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
         colorId: '',
         display: 'card',
       };
-      
-      // Compare client preferences with what server actually used
-      const prefsMatch = JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
-      
-      console.log('🔄 Hydration check:', {
-        clientPrefs: preferences,
-        serverPrefs: actualServerPrefs,
-        prefsMatch,
-      });
-      
-      if (!prefsMatch) {
-        console.log('🔄 Client preferences differ from server - refetch will be triggered by cookies.ts');
-        // Don't refetch here - let cookies.ts handle it through the refetchCallback
-      } else {
-        console.log('🔄 No refetch needed - client and server preferences match');
-      }
+
+      const prefsMatch =
+        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
+
+      // console.log('🔄 Hydration check:', {
+      //   clientPrefs: preferences,
+      //   serverPrefs: actualServerPrefs,
+      //   prefsMatch,
+      // });
+
+      // if (!prefsMatch) {
+      //   console.log(
+      //     '🔄 Client preferences differ from server - refetch will be triggered by cookies.ts',
+      //   );
+      // } else {
+      //   console.log(
+      //     '🔄 No refetch needed - client and server preferences match',
+      //   );
+      //}
     }
   }, [isHydrated, preferences, serverPreferences]);
 
-  const secondaryStatistic = preferences.sortBy === 'CONVERSION' ? 'topCuts' : 'count';
+  const secondaryStatistic =
+    preferences.sortBy === 'CONVERSION' ? 'topCuts' : 'count';
 
   return (
     <CommandersPageShell
@@ -431,7 +488,14 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
       updatePreference={updatePreference}
       preferences={preferences}
     >
-      <div className={cn('mx-auto grid w-full pb-4', display === 'table' ? 'w-full grid-cols-1 gap-2' : 'w-fit gap-4 md:grid-cols-2 xl:grid-cols-3')}>
+      <div
+        className={cn(
+          'mx-auto grid w-full pb-4',
+          display === 'table'
+            ? 'w-full grid-cols-1 gap-2'
+            : 'w-fit gap-4 md:grid-cols-2 xl:grid-cols-3',
+        )}
+      >
         {display === 'table' && (
           <div className="sticky top-[68px] hidden w-full grid-cols-[130px_minmax(350px,1fr)_100px_100px_100px_100px] items-center gap-x-2 overflow-x-hidden bg-[#514f86] p-4 text-sm text-white lg:grid">
             <div>Color</div>

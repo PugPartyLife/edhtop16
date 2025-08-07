@@ -126,20 +126,20 @@ function TournamentsPageShell({
     setLocalMinSize(minSize && parseInt(minSize, 10) > 0 ? minSize : '');
   }, [minSize]);
 
-const debouncedMinSizeUpdate = useMemo(
-  () =>
-    debounce((value: string) => {
-      if (value === '') {
-        replaceRoute('/tournaments', {minSize: 0});
-      } else {
-        const numValue = parseInt(value, 10);
-        if (!isNaN(numValue) && numValue >= 0) {
-          replaceRoute('/tournaments', {minSize: numValue});
+  const debouncedMinSizeUpdate = useMemo(
+    () =>
+      debounce((value: string) => {
+        if (value === '') {
+          replaceRoute('/tournaments', {minSize: 0});
+        } else {
+          const numValue = parseInt(value, 10);
+          if (!isNaN(numValue) && numValue >= 0) {
+            replaceRoute('/tournaments', {minSize: numValue});
+          }
         }
-      }
-    }, 300),
-  [replaceRoute],
-);
+      }, 300),
+    [replaceRoute],
+  );
 
   const handleMinSizeChange = useCallback(
     (value: string) => {
