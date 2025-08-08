@@ -251,10 +251,7 @@ export function CommanderPageShell({
   minEventSize?: number | null;
   sortBy: EntriesSortBy;
   timePeriod: TimePeriod;
-  updatePreference: (
-    key: keyof PreferencesMap['entry'],
-    value: any,
-  ) => void;
+  updatePreference: (key: keyof PreferencesMap['entry'], value: any) => void;
   preferences: PreferencesMap['entry'];
   commander: Commander_CommanderPageShell$key;
 }>) {
@@ -448,15 +445,12 @@ export const CommanderPage: EntryPointComponent<
   {commanderQueryRef: Commander_CommanderQuery},
   {}
 > = ({queries}) => {
-  const {preferences, updatePreference, isHydrated} = usePreferences(
-    'entry',
-    {
-      sortBy: 'TOP',
-      timePeriod: 'ONE_YEAR',
-      minEventSize: null,
-      maxStanding: null,
-    },
-  );
+  const {preferences, updatePreference, isHydrated} = usePreferences('entry', {
+    sortBy: 'TOP',
+    timePeriod: 'ONE_YEAR',
+    minEventSize: null,
+    maxStanding: null,
+  });
   const hasRefetchedRef = useRef(false);
 
   const serverPreferences = useMemo(() => {
@@ -488,38 +482,36 @@ export const CommanderPage: EntryPointComponent<
     queries.commanderQueryRef,
   );
 
-  const {data, loadNext, isLoadingNext, hasNext, refetch} = usePaginationFragment<
-    CommanderEntriesQuery,
-    Commander_entries$key
-  >(
-    graphql`
-      fragment Commander_entries on Commander
-      @argumentDefinitions(
-        cursor: {type: "String"}
-        count: {type: "Int", defaultValue: 48}
-      )
-      @refetchable(queryName: "CommanderEntriesQuery") {
-        entries(
-          first: $count
-          after: $cursor
-          sortBy: $sortBy
-          filters: {
-            minEventSize: $minEventSize
-            maxStanding: $maxStanding
-            timePeriod: $timePeriod
-          }
-        ) @connection(key: "Commander_entries") {
-          edges {
-            node {
-              id
-              ...Commander_EntryCard
+  const {data, loadNext, isLoadingNext, hasNext, refetch} =
+    usePaginationFragment<CommanderEntriesQuery, Commander_entries$key>(
+      graphql`
+        fragment Commander_entries on Commander
+        @argumentDefinitions(
+          cursor: {type: "String"}
+          count: {type: "Int", defaultValue: 48}
+        )
+        @refetchable(queryName: "CommanderEntriesQuery") {
+          entries(
+            first: $count
+            after: $cursor
+            sortBy: $sortBy
+            filters: {
+              minEventSize: $minEventSize
+              maxStanding: $maxStanding
+              timePeriod: $timePeriod
+            }
+          ) @connection(key: "Commander_entries") {
+            edges {
+              node {
+                id
+                ...Commander_EntryCard
+              }
             }
           }
         }
-      }
-    `,
-    commander,
-  );
+      `,
+      commander,
+    );
 
   const handleRefetch = useCallback(() => {
     startTransition(() => {
@@ -530,7 +522,7 @@ export const CommanderPage: EntryPointComponent<
           minEventSize: preferences?.minEventSize || undefined,
           maxStanding: preferences?.maxStanding || undefined,
         },
-        {fetchPolicy: 'network-only'}
+        {fetchPolicy: 'network-only'},
       );
     });
   }, [refetch, preferences]);
