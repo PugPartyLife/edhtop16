@@ -57,8 +57,6 @@ const ROUTER_CONF = {
             entrypoint: e3,
             schema: z.object({
               tid: z.pipe(z.string(), z.transform(decodeURIComponent)),
-              commander: z.pipe(z.nullish(z.pipe(z.string(), z.transform(decodeURIComponent))), z.transform(s => s == null ? undefined : s)),
-              tab: z.pipe(z.nullish(z.pipe(z.string(), z.transform(decodeURIComponent))), z.transform(s => s == null ? undefined : s)),
             })
         } as const,
     "/commander/:commander": {

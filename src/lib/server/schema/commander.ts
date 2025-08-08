@@ -208,6 +208,108 @@ Commander.implement({
         );
       },
     }),
+
+    filteredStats: t.field({
+      type: CommanderStats,
+      args: {
+        minEventSize: t.arg.int(),
+        maxStanding: t.arg.int(), 
+        timePeriod: t.arg({type: TimePeriod, required: true}),
+      },
+      resolve: async (parent, args) => {
+        console.log('🎯 filteredStats resolver called for:', parent.name);
+        console.log('🔧 Filter args:', args);
+
+        const minEventSize = args.minEventSize ?? 0;
+        const maxStanding = args.maxStanding ?? Number.MAX_SAFE_INTEGER;
+        const minDate = minDateFromTimePeriod(args.timePeriod);
+
+        console.log('📅 Date range from:', minDate.toISOString());
+        console.log('📊 Event size >= :', minEventSize);
+        console.log('🏆 Standing <= :', maxStanding);
+
+        // Get total entries for meta share calculation
+        const [entriesQuery, statsQuery] = await Promise.all([
+          db
+            .selectFrom('Entry')
+            .select((eb) => eb.fn.countAll<number>().as('totalEntries'))
+            .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
+            .where('Tournament.size', '>=', minEventSize)
+            .where('Tournament.tournamentDate', '>=', minDate.toISOString())
+            .where('Entry.standing', '<=', maxStanding)
+            .executeTakeFirstOrThrow(),
+          
+          // Get stats for this specific commander with filters
+          db
+            .selectFrom('Entry')
+            .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
+            .select([
+              (eb) => eb.fn.count<number>('Entry.id').as('count'),
+              (eb) =>
+                eb.fn
+                  .sum<number>(
+                    eb(
+                      eb.cast(eb.ref('Tournament.topCut'), 'real'),
+                      '/',
+                      eb.cast(eb.ref('Tournament.size'), 'real'),
+                    ),
+                  )
+                  .as('topCutBias'),
+              (eb) =>
+                eb.fn
+                  .sum<number>(
+                    eb
+                      .case()
+                      .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
+                      .then(1)
+                      .else(0)
+                      .end(),
+                  )
+                  .as('topCuts'),
+              (eb) =>
+                eb(
+                  eb.cast<number>(
+                    eb.fn.sum<number>(
+                      eb
+                        .case()
+                        .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
+                        .then(1)
+                        .else(0)
+                        .end(),
+                    ),
+                    'real',
+                  ),
+                  '/',
+                  eb.fn.count<number>('Entry.id'),
+                ).as('conversionRate'),
+            ])
+            .where('Entry.commanderId', '=', parent.id)
+            .where('Tournament.size', '>=', minEventSize)
+            .where('Tournament.tournamentDate', '>=', minDate.toISOString())
+            .where('Entry.standing', '<=', maxStanding)
+            .executeTakeFirst(),
+        ]);
+
+        const totalEntries = entriesQuery.totalEntries ?? 1;
+        const stats = statsQuery ?? {
+          count: 0,
+          topCuts: 0,
+          topCutBias: 0,
+          conversionRate: 0,
+        };
+
+        const result = {
+          ...stats,
+          metaShare: stats.count / totalEntries,
+          topCutBias: stats.topCutBias ?? 0,
+          conversionRate: stats.conversionRate ?? 0,
+        };
+
+        console.log('📈 Calculated filtered stats:', result);
+        return result;
+      },
+    }),
+    
     entries: t.connection({
       type: Entry,
       args: {

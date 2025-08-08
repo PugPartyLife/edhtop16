@@ -4,27 +4,43 @@ import {TID_TournamentBanner$key} from '#genfiles/queries/TID_TournamentBanner.g
 import {TID_TournamentMeta$key} from '#genfiles/queries/TID_TournamentMeta.graphql';
 import {TID_TournamentPageShell$key} from '#genfiles/queries/TID_TournamentPageShell.graphql';
 import {TID_TournamentQuery} from '#genfiles/queries/TID_TournamentQuery.graphql';
-import {Link, useNavigation} from '#genfiles/river/router';
+import {Link} from '#genfiles/river/router';
 import ArrowRightIcon from '@heroicons/react/24/solid/ArrowRightIcon';
 import {useSeoMeta} from '@unhead/react';
 import cn from 'classnames';
 import {format} from 'date-fns';
-import {MouseEvent, PropsWithChildren, useCallback, useMemo} from 'react';
+import {MouseEvent, PropsWithChildren, useCallback, useMemo, useEffect, useRef, startTransition} from 'react';
 import {
   EntryPointComponent,
   useFragment,
   usePreloadedQuery,
 } from 'react-relay/hooks';
 import {graphql} from 'relay-runtime';
+import {
+  usePreferences,
+  setRefetchCallback,
+  clearRefetchCallback,
+  type PreferencesMap,
+} from '../../lib/client/cookies';
 import {ColorIdentity} from '../../assets/icons/colors';
 import {Card} from '../../components/card';
-import {Dropdown} from '../../components/dropdown';
 import {Footer} from '../../components/footer';
 import {Navigation} from '../../components/navigation';
-import {NumberInputDropdown} from '../../components/number_input_dropdown';
 import {FirstPartyPromo} from '../../components/promo';
 import {Tab, TabList} from '../../components/tabs';
 import {formatOrdinals, formatPercent} from '../../lib/client/format';
+
+
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number,
+): T {
+  let timeoutId: NodeJS.Timeout;
+  return ((...args: any[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay);
+  }) as T;
+}
 
 function EntryCard({
   highlightFirst = true,
@@ -283,11 +299,16 @@ function useTournamentMeta(tournamentFromProps: TID_TournamentMeta$key) {
 function TournamentPageShell({
   tab,
   commanderName,
+  updatePreference,
   children,
   ...props
 }: PropsWithChildren<{
   tab: string;
   commanderName?: string | null;
+  updatePreference: (
+    key: keyof PreferencesMap['tournament'],
+    value: any,
+  ) => void;
   tournament: TID_TournamentPageShell$key;
 }>) {
   const tournament = useFragment(
@@ -307,19 +328,18 @@ function TournamentPageShell({
 
   useTournamentMeta(tournament);
 
-  const {replaceRoute} = useNavigation();
   const setSelectedTab = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
-      const nextKey = (e.target as HTMLButtonElement).id;
-      console.log({nextKey});
+      const nextKey = (e.target as HTMLButtonElement).id as 'entries' | 'breakdown' | 'commander';
 
-      replaceRoute('/tournament/:tid', {
-        tid: tournament.TID,
-        tab: nextKey,
-        commander: null,
-      });
+      updatePreference('tab' as keyof PreferencesMap['tournament'], nextKey);
+      
+      // If switching away from commander tab, clear the commander selection
+      if (nextKey !== 'commander') {
+        updatePreference('commander' as keyof PreferencesMap['tournament'], null);
+      }
     },
-    [replaceRoute, tournament.TID],
+    [updatePreference],
   );
 
   return (
@@ -358,6 +378,82 @@ export const TournamentViewPage: EntryPointComponent<
   {tournamentQueryRef: TID_TournamentQuery},
   {}
 > = ({queries}) => {
+  const {preferences, updatePreference, isHydrated} = usePreferences(
+    'tournament',
+    {
+      tab: 'entries',
+      commander: null,
+    },
+  );
+  const hasRefetchedRef = useRef(false);
+
+  const serverPreferences = useMemo(() => {
+    if (
+      typeof window !== 'undefined' &&
+      (window as any).__SERVER_PREFERENCES__
+    ) {
+      const prefs = (window as any).__SERVER_PREFERENCES__;
+      return prefs;
+    }
+    return null;
+  }, []);
+
+  let timeoutId: NodeJS.Timeout;
+  // After hydration, set up refetch handling without URL updates
+  const handleRefetch = useCallback(() => {
+    // For tournament pages, we don't need to refetch when switching tabs
+    // since all the data (entries, breakdown, breakdownEntries) is already loaded
+    // We're just showing/hiding different parts of the same data
+    console.log('Refetch triggered but skipping for tournament tab changes');
+  }, []);
+
+  useEffect(() => {
+    setRefetchCallback(handleRefetch);
+    return clearRefetchCallback;
+  }, [handleRefetch]);
+
+  useEffect(() => {
+    if (isHydrated && !hasRefetchedRef.current) {
+      hasRefetchedRef.current = true;
+
+      const actualServerPrefs = serverPreferences || {
+        tab: 'entries',
+        commander: null,
+      };
+
+      const prefsMatch =
+        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
+
+      // Only reload if preferences significantly differ
+      // For tab/commander changes, we don't need to refetch since all data is already loaded
+      if (!prefsMatch) {
+        // Don't automatically refetch for simple tab changes
+        console.log('Preferences differ but not triggering refetch for tab changes');
+      }
+    }
+  }, [isHydrated, preferences, serverPreferences, handleRefetch]);
+
+  useEffect(() => {
+    if (isHydrated && !hasRefetchedRef.current) {
+      hasRefetchedRef.current = true;
+
+      const actualServerPrefs = serverPreferences || {
+        tab: 'entries',
+        commander: null,
+      };
+
+      const prefsMatch =
+        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
+
+      // Only reload if preferences significantly differ
+      // For tab/commander changes, we don't need to refetch since all data is already loaded
+      if (!prefsMatch) {
+        // Don't automatically refetch for simple tab changes
+        console.log('Preferences differ but not triggering refetch for tab changes');
+      }
+    }
+  }, [isHydrated, preferences, serverPreferences, handleRefetch]);
+
   const {tournament} = usePreloadedQuery(
     graphql`
       query TID_TournamentQuery(
@@ -394,44 +490,81 @@ export const TournamentViewPage: EntryPointComponent<
     queries.tournamentQueryRef,
   );
 
-  const {replaceRoute} = useNavigation();
+  // Don't render preference-dependent content until hydrated
+  if (!isHydrated) {
+    return (
+      <TournamentPageShell
+        tournament={tournament}
+        commanderName={queries.tournamentQueryRef.variables.commander}
+        tab={
+          queries.tournamentQueryRef.variables.showBreakdown
+            ? 'breakdown'
+            : queries.tournamentQueryRef.variables.showBreakdownCommander
+              ? 'commander'
+              : 'entries'
+        }
+        updatePreference={updatePreference}
+      >
+        <div className="mx-auto grid w-full max-w-(--breakpoint-xl) grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
+          {queries.tournamentQueryRef.variables.showStandings &&
+            tournament.entries != null &&
+            tournament.entries.map((entry) => (
+              <EntryCard key={entry.id} entry={entry} />
+            ))}
+
+          {queries.tournamentQueryRef.variables.showBreakdown &&
+            tournament.breakdown &&
+            tournament.breakdown.map((group) => (
+              <BreakdownGroupCard
+                key={group.commander.id}
+                group={group}
+                onClickGroup={(commanderName) => {
+                  updatePreference('commander' as keyof PreferencesMap['tournament'], commanderName);
+                  updatePreference('tab' as keyof PreferencesMap['tournament'], 'commander');
+                }}
+              />
+            ))}
+
+          {queries.tournamentQueryRef.variables.showBreakdownCommander &&
+            tournament.breakdownEntries &&
+            tournament.breakdownEntries.map((entry) => (
+              <EntryCard key={entry.id} entry={entry} highlightFirst={false} />
+            ))}
+        </div>
+
+        <Footer />
+      </TournamentPageShell>
+    );
+  }
 
   return (
     <TournamentPageShell
       tournament={tournament}
-      commanderName={queries.tournamentQueryRef.variables.commander}
-      tab={
-        queries.tournamentQueryRef.variables.showBreakdown
-          ? 'breakdown'
-          : queries.tournamentQueryRef.variables.showBreakdownCommander
-            ? 'commander'
-            : 'entries'
-      }
+      commanderName={preferences?.commander || null}
+      tab={preferences?.tab || 'entries'}
+      updatePreference={updatePreference}
     >
       <div className="mx-auto grid w-full max-w-(--breakpoint-xl) grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
-        {queries.tournamentQueryRef.variables.showStandings &&
+        {preferences?.tab === 'entries' &&
           tournament.entries != null &&
           tournament.entries.map((entry) => (
             <EntryCard key={entry.id} entry={entry} />
           ))}
 
-        {queries.tournamentQueryRef.variables.showBreakdown &&
+        {preferences?.tab === 'breakdown' &&
           tournament.breakdown &&
           tournament.breakdown.map((group) => (
             <BreakdownGroupCard
               key={group.commander.id}
               group={group}
               onClickGroup={(commanderName) => {
-                replaceRoute('/tournament/:tid', {
-                  tid: queries.tournamentQueryRef.variables.TID,
-                  tab: 'commander',
-                  commander: commanderName,
-                });
+                updatePreference('commander' as keyof PreferencesMap['tournament'], commanderName);
+                updatePreference('tab' as keyof PreferencesMap['tournament'], 'commander');
               }}
             />
           ))}
 
-        {queries.tournamentQueryRef.variables.showBreakdownCommander &&
+        {preferences?.tab === 'commander' &&
           tournament.breakdownEntries &&
           tournament.breakdownEntries.map((entry) => (
             <EntryCard key={entry.id} entry={entry} highlightFirst={false} />

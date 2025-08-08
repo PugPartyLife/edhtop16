@@ -30,9 +30,15 @@ export interface EntryPreferences {
     | 'POST_BAN';
 }
 
+export interface TournamentPreferences {
+  tab?: 'entries' | 'breakdown' | 'commander';
+  commander?: string | null;
+}
+
 export type PreferencesMap = {
   commanders?: CommandersPreferences;
   entry?: EntryPreferences;
+  tournament?: TournamentPreferences;
   // Add more as needed
 };
 
@@ -50,6 +56,10 @@ export const DEFAULT_PREFERENCES: PreferencesMap = {
     minEventSize: null,
     sortBy: 'TOP',
     timePeriod: 'ONE_YEAR',
+  },
+  tournament: {
+    tab: 'entries',
+    commander: null,
   },
 };
 
@@ -178,3 +188,4 @@ export function usePreferences<K extends keyof PreferencesMap>(
 // Usage examples:
 // const {preferences, updatePreference} = usePreferences('commanders', DEFAULT_PREFERENCES.commanders);
 // const {preferences, updatePreference} = usePreferences('entry', DEFAULT_PREFERENCES.entry);
+// const {preferences, updatePreference} = usePreferences('tournament', DEFAULT_PREFERENCES.tournament);

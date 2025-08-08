@@ -145,7 +145,16 @@ function EntryCard(props: {entry: Commander_EntryCard$key}) {
   );
 }
 
-function CommanderBanner(props: {commander: Commander_CommanderBanner$key}) {
+function CommanderBanner(props: {
+  commander: Commander_CommanderBanner$key;
+  dynamicStats?: {
+    count: number;
+    metaShare: number;
+    conversionRate: number;
+    topCuts: number;
+    topCutBias: number;
+  };
+}) {
   const commander = useFragment(
     graphql`
       fragment Commander_CommanderBanner on Commander {
@@ -166,6 +175,30 @@ function CommanderBanner(props: {commander: Commander_CommanderBanner$key}) {
     `,
     props.commander,
   );
+
+  // Enhanced logging for CommanderBanner query execution and stats
+  console.group(`🎯 CommanderBanner - ${commander.name}`);
+  console.log('📊 Fragment executed at:', new Date().toISOString());
+  console.log('📈 Commander stats from GraphQL:', commander.stats);
+  console.log('🔄 Dynamic stats from props:', props.dynamicStats);
+  console.log('🎲 Stats source:', props.dynamicStats ? 'Dynamic (props)' : 'Static (GraphQL)');
+  
+  // Log when stats change
+  useEffect(() => {
+    const stats = commander.stats || props.dynamicStats;
+    console.log('📋 Stats updated:', {
+      timestamp: new Date().toISOString(),
+      source: props.dynamicStats ? 'Dynamic' : 'GraphQL',
+      stats: stats,
+      commander: commander.name
+    });
+  }, [props.dynamicStats, commander.stats, commander.name]);
+
+  // Use dynamic stats if provided, otherwise fall back to static stats
+  const stats = props.dynamicStats || commander.stats;
+  
+  console.log('✅ Final stats being used:', stats);
+  console.groupEnd();
 
   return (
     <div className="h-64 w-full bg-black/60 md:h-80">
@@ -197,20 +230,20 @@ function CommanderBanner(props: {commander: Commander_CommanderBanner$key}) {
         </div>
 
         <div className="absolute bottom-0 z-10 mx-auto flex w-full items-center justify-around border-t border-white/60 bg-black/50 px-3 text-center text-sm text-white sm:bottom-3 sm:w-auto sm:rounded-lg sm:border">
-          {commander.stats.count} Entries
+          {stats.count} Entries
           <div className="mr-1 ml-2 border-l border-white/60 py-2">
             &nbsp;
           </div>{' '}
-          {formatPercent(commander.stats.metaShare)} Meta%
+          {formatPercent(stats.metaShare)} Meta%
           <div className="mr-1 ml-2 border-l border-white/60 py-2">
             &nbsp;
           </div>{' '}
-          {formatPercent(commander.stats.conversionRate)} Conversion
+          {formatPercent(stats.conversionRate)} Conversion
           <div className="mr-1 ml-2 border-l border-white/60 py-2">
             &nbsp;
           </div>{' '}
-          {commander.stats.topCutBias > 0
-            ? (commander.stats.topCuts / commander.stats.topCutBias).toFixed(1)
+          {stats.topCutBias > 0
+            ? (stats.topCuts / stats.topCutBias).toFixed(1)
             : '0.0'}{' '}
           Top Cut Bias
         </div>
@@ -243,6 +276,7 @@ export function CommanderPageShell({
   timePeriod,
   updatePreference,
   preferences,
+  dynamicStatsFromData, // Add this new prop
   children,
   ...props
 }: PropsWithChildren<{
@@ -253,15 +287,40 @@ export function CommanderPageShell({
   timePeriod: TimePeriod;
   updatePreference: (key: keyof PreferencesMap['entry'], value: any) => void;
   preferences: PreferencesMap['entry'];
+  dynamicStatsFromData?: { // Add this type
+    count: number;
+    metaShare: number;
+    conversionRate: number;
+    topCuts: number;
+    topCutBias: number;
+  } | null;
   commander: Commander_CommanderPageShell$key;
 }>) {
   const commander = useFragment(
     graphql`
-      fragment Commander_CommanderPageShell on Commander {
+      fragment Commander_CommanderPageShell on Commander
+      @argumentDefinitions(
+        minEventSize: {type: "Int"}
+        maxStanding: {type: "Int"}
+        timePeriod: {type: "TimePeriod!"}
+      ) {
         name
         breakdownUrl
         ...Commander_CommanderBanner
         ...Commander_CommanderMeta
+
+        # Add the new filteredStats field
+        filteredStats(
+          minEventSize: $minEventSize
+          maxStanding: $maxStanding
+          timePeriod: $timePeriod
+        ) {
+          conversionRate
+          topCuts
+          count
+          metaShare
+          topCutBias
+        }
 
         promo {
           ...promo_EmbededPromo
@@ -272,6 +331,23 @@ export function CommanderPageShell({
   );
 
   useCommanderMeta(commander);
+
+  // Log and use the filtered stats
+  console.group('🏠 CommanderPageShell with Filtered Stats');
+  console.log('👤 Commander:', commander.name);
+  console.log('🔧 Current filters:', { maxStanding, minEventSize, timePeriod });
+  console.log('📊 Filtered stats from GraphQL:', commander.filteredStats);
+  
+  // Use the filtered stats as dynamic stats
+  const dynamicStats = dynamicStatsFromData || commander.filteredStats;
+
+  console.group('🏠 CommanderPageShell with Filtered Stats');
+  console.log('👤 Commander:', commander.name);
+  console.log('🔧 Current filters:', { maxStanding, minEventSize, timePeriod });
+  console.log('📊 Filtered stats from commander:', commander.filteredStats);
+  console.log('📊 Filtered stats from data:', dynamicStatsFromData);
+  console.log('🎯 Using dynamic stats:', dynamicStats);
+  console.groupEnd();
 
   const [localEventSize, setLocalEventSize] = useState(
     minEventSize?.toString() || '',
@@ -327,7 +403,10 @@ export function CommanderPageShell({
   return (
     <>
       <Navigation />
-      <CommanderBanner commander={commander} />
+      <CommanderBanner 
+        commander={commander} 
+        dynamicStats={dynamicStats} 
+      />
       {commander.promo && <FirstPartyPromo promo={commander.promo} />}
 
       <div className="mx-auto flex flex-wrap justify-center gap-x-4 gap-y-4 lg:flex-nowrap">
@@ -474,8 +553,17 @@ export const CommanderPage: EntryPointComponent<
         $timePeriod: TimePeriod!
       ) @preloadable {
         commander(name: $commander) {
-          ...Commander_CommanderPageShell
-          ...Commander_entries
+          name
+          ...Commander_CommanderPageShell @arguments(
+            minEventSize: $minEventSize
+            maxStanding: $maxStanding
+            timePeriod: $timePeriod
+          )
+          ...Commander_entries @arguments(
+            minEventSize: $minEventSize
+            maxStanding: $maxStanding
+            timePeriod: $timePeriod
+          )
         }
       }
     `,
@@ -489,8 +577,24 @@ export const CommanderPage: EntryPointComponent<
         @argumentDefinitions(
           cursor: {type: "String"}
           count: {type: "Int", defaultValue: 48}
+          minEventSize: {type: "Int"}
+          maxStanding: {type: "Int"}
+          timePeriod: {type: "TimePeriod!"}
         )
         @refetchable(queryName: "CommanderEntriesQuery") {
+          # Add filteredStats to this fragment so it gets refetched
+          filteredStats(
+            minEventSize: $minEventSize
+            maxStanding: $maxStanding
+            timePeriod: $timePeriod
+          ) {
+            conversionRate
+            topCuts
+            count
+            metaShare
+            topCutBias
+          }
+          
           entries(
             first: $count
             after: $cursor
@@ -513,19 +617,27 @@ export const CommanderPage: EntryPointComponent<
       commander,
     );
 
+  console.log('📋 Current data object:', data);
+
   const handleRefetch = useCallback(() => {
+    const refetchParams = {
+      sortBy: preferences?.sortBy || 'TOP',
+      timePeriod: preferences?.timePeriod || 'ONE_YEAR',
+      minEventSize: preferences?.minEventSize || undefined,
+      maxStanding: preferences?.maxStanding || undefined,
+    };
+
+    console.group('🔄 CommanderPage Refetch Initiated');
+    console.log('⏰ Timestamp:', new Date().toISOString());
+    console.log('📋 Refetch Parameters:', refetchParams);
+    console.log('👤 Commander:', commander.name || 'Unknown');
+    console.log('🎯 This will trigger filteredStats resolver on backend');
+    console.groupEnd();
+
     startTransition(() => {
-      refetch(
-        {
-          sortBy: preferences?.sortBy || 'TOP',
-          timePeriod: preferences?.timePeriod || 'ONE_YEAR',
-          minEventSize: preferences?.minEventSize || undefined,
-          maxStanding: preferences?.maxStanding || undefined,
-        },
-        {fetchPolicy: 'network-only'},
-      );
+      refetch(refetchParams, {fetchPolicy: 'network-only'});
     });
-  }, [refetch, preferences]);
+  }, [refetch, preferences, commander.name]);
 
   const handleLoadMore = useCallback(
     (count: number) => {
@@ -557,12 +669,27 @@ export const CommanderPage: EntryPointComponent<
 
       // If client preferences differ from server defaults, refetch immediately
       if (!prefsMatch) {
+        console.log('🔄 Client prefs differ from server, triggering refetch');
         setTimeout(() => {
           handleRefetch();
         }, 100);
       }
     }
   }, [isHydrated, preferences, serverPreferences, handleRefetch]);
+
+  // Log when query data updates
+  useEffect(() => {
+    if (data && commander) {
+      console.group('📊 CommanderPage Query Data Updated');
+      console.log('⏰ Timestamp:', new Date().toISOString());
+      console.log('👤 Commander:', commander.name);
+      console.log('📈 Entries count:', data.entries.edges.length);
+      console.log('🔗 Has more pages:', hasNext);
+      console.log('⚡ Is loading:', isLoadingNext);
+      console.log('🎯 filteredStats should be available in CommanderPageShell');
+      console.groupEnd();
+    }
+  }, [data, commander, hasNext, isLoadingNext]);
 
   return (
     <CommanderPageShell
@@ -573,6 +700,7 @@ export const CommanderPage: EntryPointComponent<
       timePeriod={preferences?.timePeriod || 'ONE_YEAR'}
       updatePreference={updatePreference}
       preferences={preferences}
+      dynamicStatsFromData={data.filteredStats} // Now this should exist
     >
       <div className="mx-auto grid w-full max-w-(--breakpoint-xl) grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
         {data.entries.edges.map(({node}) => (

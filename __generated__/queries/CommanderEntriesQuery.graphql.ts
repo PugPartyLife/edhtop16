@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<67b2f57fdcec37b307be676abfd2ca52>>
- * @relayHash 6d57a79d7dad9da5f8c78abbefd5ee68
+ * @generated SignedSource<<81988c50c90b2e87c16ae77fd19cc2ef>>
+ * @relayHash c6615de4ea65d559e8a4b7badd70aad4
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 6d57a79d7dad9da5f8c78abbefd5ee68
+// @relayRequestID c6615de4ea65d559e8a4b7badd70aad4
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
@@ -22,7 +22,7 @@ export type CommanderEntriesQuery$variables = {
   maxStanding?: number | null | undefined;
   minEventSize?: number | null | undefined;
   sortBy?: EntriesSortBy | null | undefined;
-  timePeriod?: TimePeriod | null | undefined;
+  timePeriod: TimePeriod;
 };
 export type CommanderEntriesQuery$data = {
   readonly node: {
@@ -78,43 +78,47 @@ v7 = [
   }
 ],
 v8 = {
+  "kind": "Variable",
+  "name": "maxStanding",
+  "variableName": "maxStanding"
+},
+v9 = {
+  "kind": "Variable",
+  "name": "minEventSize",
+  "variableName": "minEventSize"
+},
+v10 = {
+  "kind": "Variable",
+  "name": "timePeriod",
+  "variableName": "timePeriod"
+},
+v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "__typename",
   "storageKey": null
 },
-v9 = {
+v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v10 = [
+v13 = [
+  (v8/*: any*/),
+  (v9/*: any*/),
+  (v10/*: any*/)
+],
+v14 = [
   {
     "kind": "Variable",
     "name": "after",
     "variableName": "cursor"
   },
   {
-    "fields": [
-      {
-        "kind": "Variable",
-        "name": "maxStanding",
-        "variableName": "maxStanding"
-      },
-      {
-        "kind": "Variable",
-        "name": "minEventSize",
-        "variableName": "minEventSize"
-      },
-      {
-        "kind": "Variable",
-        "name": "timePeriod",
-        "variableName": "timePeriod"
-      }
-    ],
+    "fields": (v13/*: any*/),
     "kind": "ObjectValue",
     "name": "filters"
   },
@@ -129,7 +133,7 @@ v10 = [
     "variableName": "sortBy"
   }
 ],
-v11 = {
+v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -170,7 +174,10 @@ return {
                 "kind": "Variable",
                 "name": "cursor",
                 "variableName": "cursor"
-              }
+              },
+              (v8/*: any*/),
+              (v9/*: any*/),
+              (v10/*: any*/)
             ],
             "kind": "FragmentSpread",
             "name": "Commander_entries"
@@ -204,14 +211,60 @@ return {
         "name": "node",
         "plural": false,
         "selections": [
-          (v8/*: any*/),
-          (v9/*: any*/),
+          (v11/*: any*/),
+          (v12/*: any*/),
           {
             "kind": "InlineFragment",
             "selections": [
               {
                 "alias": null,
-                "args": (v10/*: any*/),
+                "args": (v13/*: any*/),
+                "concreteType": "CommanderStats",
+                "kind": "LinkedField",
+                "name": "filteredStats",
+                "plural": false,
+                "selections": [
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "conversionRate",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "topCuts",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "count",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "metaShare",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "topCutBias",
+                    "storageKey": null
+                  }
+                ],
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": (v14/*: any*/),
                 "concreteType": "CommanderEntriesConnection",
                 "kind": "LinkedField",
                 "name": "entries",
@@ -233,7 +286,7 @@ return {
                         "name": "node",
                         "plural": false,
                         "selections": [
-                          (v9/*: any*/),
+                          (v12/*: any*/),
                           {
                             "alias": null,
                             "args": null,
@@ -277,7 +330,7 @@ return {
                             "name": "player",
                             "plural": false,
                             "selections": [
-                              (v11/*: any*/),
+                              (v15/*: any*/),
                               {
                                 "alias": null,
                                 "args": null,
@@ -285,7 +338,7 @@ return {
                                 "name": "isKnownCheater",
                                 "storageKey": null
                               },
-                              (v9/*: any*/)
+                              (v12/*: any*/)
                             ],
                             "storageKey": null
                           },
@@ -297,7 +350,7 @@ return {
                             "name": "tournament",
                             "plural": false,
                             "selections": [
-                              (v11/*: any*/),
+                              (v15/*: any*/),
                               {
                                 "alias": null,
                                 "args": null,
@@ -319,11 +372,11 @@ return {
                                 "name": "TID",
                                 "storageKey": null
                               },
-                              (v9/*: any*/)
+                              (v12/*: any*/)
                             ],
                             "storageKey": null
                           },
-                          (v8/*: any*/)
+                          (v11/*: any*/)
                         ],
                         "storageKey": null
                       },
@@ -367,7 +420,7 @@ return {
               },
               {
                 "alias": null,
-                "args": (v10/*: any*/),
+                "args": (v14/*: any*/),
                 "filters": [
                   "sortBy",
                   "filters"
@@ -387,7 +440,7 @@ return {
     ]
   },
   "params": {
-    "id": "6d57a79d7dad9da5f8c78abbefd5ee68",
+    "id": "c6615de4ea65d559e8a4b7badd70aad4",
     "metadata": {},
     "name": "CommanderEntriesQuery",
     "operationKind": "query",
@@ -396,6 +449,6 @@ return {
 };
 })();
 
-(node as any).hash = "dd5ecf026b227cd526752087b0600d9b";
+(node as any).hash = "e2eb1a6004d1577d0b02ac9eeb9998d4";
 
 export default node;

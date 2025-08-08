@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<1331694e56eec5eaa45a70707e7ec8a6>>
- * @relayHash 5f07859698573f70090eee3c5f371ff5
+ * @generated SignedSource<<4932334f1417bcc460e163be9b6e70c5>>
+ * @relayHash 212f7915acfacd5df828faac7368d6b6
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 5f07859698573f70090eee3c5f371ff5
+// @relayRequestID 212f7915acfacd5df828faac7368d6b6
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
@@ -24,6 +24,7 @@ export type Commander_CommanderQuery$variables = {
 };
 export type Commander_CommanderQuery$data = {
   readonly commander: {
+    readonly name: string;
     readonly " $fragmentSpreads": FragmentRefs<"Commander_CommanderPageShell" | "Commander_entries">;
   };
 };
@@ -72,32 +73,70 @@ v6 = {
   "name": "name",
   "storageKey": null
 },
-v7 = {
+v7 = [
+  {
+    "kind": "Variable",
+    "name": "maxStanding",
+    "variableName": "maxStanding"
+  },
+  {
+    "kind": "Variable",
+    "name": "minEventSize",
+    "variableName": "minEventSize"
+  },
+  {
+    "kind": "Variable",
+    "name": "timePeriod",
+    "variableName": "timePeriod"
+  }
+],
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v8 = [
+v9 = [
   {
-    "fields": [
-      {
-        "kind": "Variable",
-        "name": "maxStanding",
-        "variableName": "maxStanding"
-      },
-      {
-        "kind": "Variable",
-        "name": "minEventSize",
-        "variableName": "minEventSize"
-      },
-      {
-        "kind": "Variable",
-        "name": "timePeriod",
-        "variableName": "timePeriod"
-      }
-    ],
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "conversionRate",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "topCuts",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "count",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "metaShare",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "topCutBias",
+    "storageKey": null
+  }
+],
+v10 = [
+  {
+    "fields": (v7/*: any*/),
     "kind": "ObjectValue",
     "name": "filters"
   },
@@ -133,13 +172,14 @@ return {
         "name": "commander",
         "plural": false,
         "selections": [
+          (v6/*: any*/),
           {
-            "args": null,
+            "args": (v7/*: any*/),
             "kind": "FragmentSpread",
             "name": "Commander_CommanderPageShell"
           },
           {
-            "args": null,
+            "args": (v7/*: any*/),
             "kind": "FragmentSpread",
             "name": "Commander_entries"
           }
@@ -200,7 +240,7 @@ return {
                 "name": "imageUrls",
                 "storageKey": null
               },
-              (v7/*: any*/)
+              (v8/*: any*/)
             ],
             "storageKey": null
           },
@@ -211,43 +251,17 @@ return {
             "kind": "LinkedField",
             "name": "stats",
             "plural": false,
-            "selections": [
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "conversionRate",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "topCuts",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "count",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "metaShare",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "topCutBias",
-                "storageKey": null
-              }
-            ],
+            "selections": (v9/*: any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": (v7/*: any*/),
+            "concreteType": "CommanderStats",
+            "kind": "LinkedField",
+            "name": "filteredStats",
+            "plural": false,
+            "selections": (v9/*: any*/),
             "storageKey": null
           },
           {
@@ -305,7 +319,7 @@ return {
           },
           {
             "alias": null,
-            "args": (v8/*: any*/),
+            "args": (v10/*: any*/),
             "concreteType": "CommanderEntriesConnection",
             "kind": "LinkedField",
             "name": "entries",
@@ -327,7 +341,7 @@ return {
                     "name": "node",
                     "plural": false,
                     "selections": [
-                      (v7/*: any*/),
+                      (v8/*: any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -379,7 +393,7 @@ return {
                             "name": "isKnownCheater",
                             "storageKey": null
                           },
-                          (v7/*: any*/)
+                          (v8/*: any*/)
                         ],
                         "storageKey": null
                       },
@@ -413,7 +427,7 @@ return {
                             "name": "TID",
                             "storageKey": null
                           },
-                          (v7/*: any*/)
+                          (v8/*: any*/)
                         ],
                         "storageKey": null
                       },
@@ -467,7 +481,7 @@ return {
           },
           {
             "alias": null,
-            "args": (v8/*: any*/),
+            "args": (v10/*: any*/),
             "filters": [
               "sortBy",
               "filters"
@@ -477,14 +491,14 @@ return {
             "kind": "LinkedHandle",
             "name": "entries"
           },
-          (v7/*: any*/)
+          (v8/*: any*/)
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "id": "5f07859698573f70090eee3c5f371ff5",
+    "id": "212f7915acfacd5df828faac7368d6b6",
     "metadata": {},
     "name": "Commander_CommanderQuery",
     "operationKind": "query",
@@ -493,7 +507,7 @@ return {
 };
 })();
 
-(node as any).hash = "1c8dc10b97acee5166a8f1fa420adf66";
+(node as any).hash = "48b4522029f6bad9de2bbc5cd1fdc8d8";
 
 import { PreloadableQueryRegistry } from 'relay-runtime';
 PreloadableQueryRegistry.set(node.params.id, node);
