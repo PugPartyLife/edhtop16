@@ -18,8 +18,8 @@ export interface CommandersPreferences {
 }
 
 export interface EntryPreferences {
-  maxStanding?: number;
-  minEventSize?: number;
+  maxStanding?: number | null;
+  minEventSize?: number | null;
   sortBy?: 'TOP' | 'NEW';
   timePeriod?:
     | 'ONE_MONTH'
@@ -36,7 +36,7 @@ export type PreferencesMap = {
   // Add more as needed
 };
 
-const DEFAULT_PREFERENCES: PreferencesMap = {
+export const DEFAULT_PREFERENCES: PreferencesMap = {
   commanders: {
     sortBy: 'CONVERSION',
     timePeriod: 'ONE_MONTH',
@@ -46,10 +46,10 @@ const DEFAULT_PREFERENCES: PreferencesMap = {
     colorId: '',
   },
   entry: {
-    maxStanding: 0,
-    minEventSize: 0,
+    maxStanding: null,
+    minEventSize: null,
     sortBy: 'TOP',
-    timePeriod: 'ONE_MONTH',
+    timePeriod: 'ONE_YEAR',
   },
 };
 

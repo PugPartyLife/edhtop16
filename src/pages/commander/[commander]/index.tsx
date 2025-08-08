@@ -9,7 +9,7 @@ import {
 import {Commander_entries$key} from '#genfiles/queries/Commander_entries.graphql';
 import {Commander_EntryCard$key} from '#genfiles/queries/Commander_EntryCard.graphql';
 import {CommanderEntriesQuery} from '#genfiles/queries/CommanderEntriesQuery.graphql';
-import {Link, useNavigation} from '#genfiles/river/router';
+import {Link} from '#genfiles/river/router';
 import {useSeoMeta} from '@unhead/react';
 import cn from 'classnames';
 import {format} from 'date-fns';
@@ -20,6 +20,7 @@ import {
   useCallback,
   startTransition,
   useMemo,
+  useRef,
 } from 'react';
 import {
   EntryPointComponent,
@@ -28,6 +29,12 @@ import {
   usePreloadedQuery,
 } from 'react-relay/hooks';
 import {graphql} from 'relay-runtime';
+import {
+  usePreferences,
+  setRefetchCallback,
+  clearRefetchCallback,
+  type PreferencesMap,
+} from '../../../lib/client/cookies';
 import {ColorIdentity} from '../../../assets/icons/colors';
 import {Card} from '../../../components/card';
 import {Dropdown} from '../../../components/dropdown';
@@ -234,6 +241,8 @@ export function CommanderPageShell({
   minEventSize,
   sortBy,
   timePeriod,
+  updatePreference,
+  preferences,
   children,
   ...props
 }: PropsWithChildren<{
@@ -242,6 +251,11 @@ export function CommanderPageShell({
   minEventSize?: number | null;
   sortBy: EntriesSortBy;
   timePeriod: TimePeriod;
+  updatePreference: (
+    key: keyof PreferencesMap['entry'],
+    value: any,
+  ) => void;
+  preferences: PreferencesMap['entry'];
   commander: Commander_CommanderPageShell$key;
 }>) {
   const commander = useFragment(
@@ -261,7 +275,6 @@ export function CommanderPageShell({
   );
 
   useCommanderMeta(commander);
-  const {replaceRoute} = useNavigation();
 
   const [localEventSize, setLocalEventSize] = useState(
     minEventSize?.toString() || '',
@@ -270,95 +283,43 @@ export function CommanderPageShell({
     maxStanding?.toString() || '',
   );
 
+  const debouncedUpdaters = useRef({
+    eventSize: debounce((value: string) => {
+      const numValue = value === '' ? null : parseInt(value, 10);
+      if (numValue === null || (!isNaN(numValue) && numValue >= 0)) {
+        updatePreference(
+          'minEventSize' as keyof PreferencesMap['entry'],
+          numValue,
+        );
+      }
+    }, 250),
+    maxStanding: debounce((value: string) => {
+      const numValue = value === '' ? null : parseInt(value, 10);
+      if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
+        updatePreference(
+          'maxStanding' as keyof PreferencesMap['entry'],
+          numValue,
+        );
+      }
+    }, 250),
+  }).current;
+
   useEffect(() => {
     setLocalEventSize(minEventSize?.toString() || '');
-  }, [minEventSize]);
-
-  useEffect(() => {
     setLocalMaxStanding(maxStanding?.toString() || '');
-  }, [maxStanding]);
+  }, [minEventSize, maxStanding]);
 
-  const debouncedEventSizeUpdate = useMemo(
-    () =>
-      debounce((value: string) => {
-        if (value === '') {
-          replaceRoute('/commander/:commander', {
-            commander: commander.name,
-            minEventSize: null,
-          });
-        } else {
-          const numValue = parseInt(value, 10);
-          if (!isNaN(numValue) && numValue >= 0) {
-            replaceRoute('/commander/:commander', {
-              commander: commander.name,
-              minEventSize: numValue,
-            });
-          }
-        }
-      }, 300),
-    [commander.name, replaceRoute],
-  );
-
-  const debouncedMaxStandingUpdate = useMemo(
-    () =>
-      debounce((value: string) => {
-        if (value === '') {
-          replaceRoute('/commander/:commander', {
-            commander: commander.name,
-            maxStanding: null,
-          });
-        } else {
-          const numValue = parseInt(value, 10);
-          if (!isNaN(numValue) && numValue >= 1) {
-            replaceRoute('/commander/:commander', {
-              commander: commander.name,
-              maxStanding: numValue,
-            });
-          }
-        }
-      }, 300),
-    [commander.name, replaceRoute],
-  );
-
-  const handleEventSizeChange = useCallback(
-    (value: string) => {
-      setLocalEventSize(value);
-      debouncedEventSizeUpdate(value);
-    },
-    [debouncedEventSizeUpdate],
-  );
-
-  const handleEventSizeSelect = useCallback(
-    (value: number | null) => {
-      const stringValue = value?.toString() || '';
-      setLocalEventSize(stringValue);
-      replaceRoute('/commander/:commander', {
-        commander: commander.name,
-        minEventSize: value,
-      });
-    },
-    [commander.name, replaceRoute],
-  );
-
-  const handleMaxStandingChange = useCallback(
-    (value: string) => {
-      setLocalMaxStanding(value);
-      debouncedMaxStandingUpdate(value);
-    },
-    [debouncedMaxStandingUpdate],
-  );
-
-  const handleMaxStandingSelect = useCallback(
-    (value: number | null) => {
-      const stringValue = value?.toString() || '';
-      setLocalMaxStanding(stringValue);
-      replaceRoute('/commander/:commander', {
-        commander: commander.name,
-        maxStanding: value,
-      });
-    },
-    [commander.name, replaceRoute],
-  );
+  const getTimePeriodLabel = (period: string) => {
+    const labels: {[key: string]: string} = {
+      ONE_MONTH: '1 Month',
+      THREE_MONTHS: '3 Months',
+      SIX_MONTHS: '6 Months',
+      ONE_YEAR: '1 Year',
+      ALL_TIME: 'All Time',
+      POST_BAN: 'Post Ban',
+    };
+    return labels[period] || '1 Year';
+  };
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === 'Go') {
@@ -383,10 +344,10 @@ export function CommanderPageShell({
               {value: 'NEW' as EntriesSortBy, label: 'Recent'},
             ]}
             onSelect={(value) => {
-              replaceRoute('/commander/:commander', {
-                commander: commander.name,
-                sortBy: value,
-              });
+              updatePreference(
+                'sortBy' as keyof PreferencesMap['entry'],
+                value,
+              );
             }}
           />
         </div>
@@ -395,19 +356,7 @@ export function CommanderPageShell({
           <Dropdown
             id="commander-time-period"
             label="Time Period"
-            value={
-              timePeriod === 'ONE_MONTH'
-                ? '1 Month'
-                : timePeriod === 'THREE_MONTHS'
-                  ? '3 Months'
-                  : timePeriod === 'SIX_MONTHS'
-                    ? '6 Months'
-                    : timePeriod === 'ONE_YEAR'
-                      ? '1 Year'
-                      : timePeriod === 'ALL_TIME'
-                        ? 'All Time'
-                        : 'Post Ban'
-            }
+            value={getTimePeriodLabel(preferences?.timePeriod || timePeriod)}
             options={[
               {value: 'ONE_MONTH', label: '1 Month'},
               {value: 'THREE_MONTHS', label: '3 Months'},
@@ -417,10 +366,10 @@ export function CommanderPageShell({
               {value: 'POST_BAN', label: 'Post Ban'},
             ]}
             onSelect={(value) => {
-              replaceRoute('/commander/:commander', {
-                commander: commander.name,
-                timePeriod: value,
-              });
+              updatePreference(
+                'timePeriod' as keyof PreferencesMap['entry'],
+                value,
+              );
             }}
           />
         </div>
@@ -439,8 +388,20 @@ export function CommanderPageShell({
               {value: 60, label: '60+ - Large Events'},
               {value: 100, label: '100+ - Major Events'},
             ]}
-            onChange={handleEventSizeChange}
-            onSelect={handleEventSizeSelect}
+            onChange={(value) => {
+              setLocalEventSize(value);
+              debouncedUpdaters.eventSize(value);
+            }}
+            onSelect={(value) => {
+              const stringValue = value?.toString() || '';
+              startTransition(() => {
+                setLocalEventSize(stringValue);
+              });
+              updatePreference(
+                'minEventSize' as keyof PreferencesMap['entry'],
+                value,
+              );
+            }}
             onKeyDown={handleKeyDown}
           />
         </div>
@@ -459,8 +420,20 @@ export function CommanderPageShell({
               {value: 4, label: 'Top 4'},
               {value: 16, label: 'Top 16'},
             ]}
-            onChange={handleMaxStandingChange}
-            onSelect={handleMaxStandingSelect}
+            onChange={(value) => {
+              setLocalMaxStanding(value);
+              debouncedUpdaters.maxStanding(value);
+            }}
+            onSelect={(value) => {
+              const stringValue = value?.toString() || '';
+              startTransition(() => {
+                setLocalMaxStanding(stringValue);
+              });
+              updatePreference(
+                'maxStanding' as keyof PreferencesMap['entry'],
+                value,
+              );
+            }}
             onKeyDown={handleKeyDown}
           />
         </div>
@@ -475,6 +448,28 @@ export const CommanderPage: EntryPointComponent<
   {commanderQueryRef: Commander_CommanderQuery},
   {}
 > = ({queries}) => {
+  const {preferences, updatePreference, isHydrated} = usePreferences(
+    'entry',
+    {
+      sortBy: 'TOP',
+      timePeriod: 'ONE_YEAR',
+      minEventSize: null,
+      maxStanding: null,
+    },
+  );
+  const hasRefetchedRef = useRef(false);
+
+  const serverPreferences = useMemo(() => {
+    if (
+      typeof window !== 'undefined' &&
+      (window as any).__SERVER_PREFERENCES__
+    ) {
+      const prefs = (window as any).__SERVER_PREFERENCES__;
+      return prefs;
+    }
+    return null;
+  }, []);
+
   const {commander} = usePreloadedQuery(
     graphql`
       query Commander_CommanderQuery(
@@ -493,7 +488,7 @@ export const CommanderPage: EntryPointComponent<
     queries.commanderQueryRef,
   );
 
-  const {data, loadNext, isLoadingNext, hasNext} = usePaginationFragment<
+  const {data, loadNext, isLoadingNext, hasNext, refetch} = usePaginationFragment<
     CommanderEntriesQuery,
     Commander_entries$key
   >(
@@ -526,13 +521,66 @@ export const CommanderPage: EntryPointComponent<
     commander,
   );
 
+  const handleRefetch = useCallback(() => {
+    startTransition(() => {
+      refetch(
+        {
+          sortBy: preferences?.sortBy || 'TOP',
+          timePeriod: preferences?.timePeriod || 'ONE_YEAR',
+          minEventSize: preferences?.minEventSize || undefined,
+          maxStanding: preferences?.maxStanding || undefined,
+        },
+        {fetchPolicy: 'network-only'}
+      );
+    });
+  }, [refetch, preferences]);
+
+  const handleLoadMore = useCallback(
+    (count: number) => {
+      startTransition(() => {
+        loadNext(count);
+      });
+    },
+    [loadNext],
+  );
+
+  useEffect(() => {
+    setRefetchCallback(handleRefetch);
+    return clearRefetchCallback;
+  }, [handleRefetch]);
+
+  useEffect(() => {
+    if (isHydrated && !hasRefetchedRef.current) {
+      hasRefetchedRef.current = true;
+
+      const actualServerPrefs = serverPreferences || {
+        sortBy: 'TOP',
+        timePeriod: 'ONE_YEAR',
+        minEventSize: null,
+        maxStanding: null,
+      };
+
+      const prefsMatch =
+        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
+
+      // If client preferences differ from server defaults, refetch immediately
+      if (!prefsMatch) {
+        setTimeout(() => {
+          handleRefetch();
+        }, 100);
+      }
+    }
+  }, [isHydrated, preferences, serverPreferences, handleRefetch]);
+
   return (
     <CommanderPageShell
       commander={commander}
-      maxStanding={queries.commanderQueryRef.variables.maxStanding}
-      minEventSize={queries.commanderQueryRef.variables.minEventSize}
-      sortBy={queries.commanderQueryRef.variables.sortBy}
-      timePeriod={queries.commanderQueryRef.variables.timePeriod}
+      maxStanding={preferences?.maxStanding || null}
+      minEventSize={preferences?.minEventSize || null}
+      sortBy={preferences?.sortBy || 'TOP'}
+      timePeriod={preferences?.timePeriod || 'ONE_YEAR'}
+      updatePreference={updatePreference}
+      preferences={preferences}
     >
       <div className="mx-auto grid w-full max-w-(--breakpoint-xl) grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
         {data.entries.edges.map(({node}) => (
@@ -543,7 +591,7 @@ export const CommanderPage: EntryPointComponent<
       <LoadMoreButton
         hasNext={hasNext}
         isLoadingNext={isLoadingNext}
-        loadNext={loadNext}
+        loadNext={handleLoadMore}
       />
 
       <Footer />
