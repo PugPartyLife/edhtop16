@@ -37,10 +37,6 @@ function cleanupCache() {
     const toRemove = entries.slice(0, queryCache.size - MAX_CACHE_SIZE);
     toRemove.forEach(([key]) => queryCache.delete(key));
   }
-
-  // console.log(
-  //   `🧹 Cache cleanup: ${keysToDelete.length} expired, ${queryCache.size} remaining`,
-  // );
 }
 
 const isGenerationMode =
@@ -49,7 +45,7 @@ const isGenerationMode =
       arg.includes('generate') ||
       arg.includes('build') ||
       arg.includes('schema'),
-  ) || process.env.npm_lifecycle_event?.includes('generate'); // generate:schema hangs without this cause of node...
+  ) || process.env.npm_lifecycle_event?.includes('generate'); // prevents generate:schema from taking 5 * 60 * 1000ms 
 
 if (!isGenerationMode) {
   setInterval(cleanupCache, 5 * 60 * 1000);
@@ -209,26 +205,38 @@ Commander.implement({
       },
     }),
 
-    filteredStats: t.field({
+filteredStats: t.field({
       type: CommanderStats,
       args: {
         minEventSize: t.arg.int(),
         maxStanding: t.arg.int(),
         timePeriod: t.arg({type: TimePeriod, required: true}),
       },
-      resolve: async (parent, args) => {
-        //console.log('🎯 filteredStats resolver called for:', parent.name);
-        //console.log('🔧 Filter args:', args);
+      resolve: async (parent, args, context) => {
+        
+        const preferences = context.preferences.entry || {
+          sortBy: 'TOP',
+          timePeriod: 'ONE_YEAR',
+          minEventSize: null,
+          maxStanding: null,
+        };
 
-        const minEventSize = args.minEventSize ?? 0;
-        const maxStanding = args.maxStanding ?? Number.MAX_SAFE_INTEGER;
-        const minDate = minDateFromTimePeriod(args.timePeriod);
+        console.log('🔧 [SERVER] Commander filteredStats preferences received:', preferences);
 
-        //console.log('📅 Date range from:', minDate.toISOString());
-        //console.log('📊 Event size >= :', minEventSize);
-        //console.log('🏆 Standing <= :', maxStanding);
+        
+        const minEventSize = preferences.minEventSize || args.minEventSize || 0;
+        const maxStanding = preferences.maxStanding || args.maxStanding || Number.MAX_SAFE_INTEGER;
+        const timePeriod = preferences.timePeriod || args.timePeriod;
 
-        // Get total entries for meta share calculation
+        const minDate = minDateFromTimePeriod(timePeriod);
+
+        console.log('🔧 [SERVER] Applied filteredStats filters:', {
+          minEventSize,
+          maxStanding,
+          timePeriod,
+          commander: parent.name,
+        });
+
         const [entriesQuery, statsQuery] = await Promise.all([
           db
             .selectFrom('Entry')
@@ -239,7 +247,6 @@ Commander.implement({
             .where('Entry.standing', '<=', maxStanding)
             .executeTakeFirstOrThrow(),
 
-          // Get stats for this specific commander with filters
           db
             .selectFrom('Entry')
             .leftJoin('Tournament', 'Tournament.id', 'Entry.tournamentId')
@@ -302,16 +309,14 @@ Commander.implement({
           conversionRate: 0,
         };
 
-        // Ensure all numeric fields are never null
         const result = {
           count: stats.count || 0,
-          topCuts: stats.topCuts || 0, // Fix: ensure topCuts is never null
+          topCuts: stats.topCuts || 0,
           topCutBias: stats.topCutBias || 0,
           conversionRate: stats.conversionRate || 0,
           metaShare: (stats.count || 0) / totalEntries,
         };
 
-        //console.log('📈 Calculated filtered stats:', result);
         return result;
       },
     }),
@@ -503,18 +508,6 @@ builder.queryField('commanders', (t) =>
         return cached.data;
       }
 
-//      console.log('🔍 Executing fresh commanders query');
-//      console.log('⚙️ Commander resolver - final values:', {
-//        sortBy,
-//        timePeriod,
-//        minEntries,
-//        minTournamentSize,
-//        colorId,
-//        fromArgs: {sortBy: args.sortBy, timePeriod: args.timePeriod},
-//        fromContext: context.preferences.commanders,
-//        finalUsed: {sortBy, timePeriod, minEntries, minTournamentSize, colorId},
-//      });
-
       const result = await resolveCursorConnection(
         {args, toCursor: (parent) => `${parent.id}`},
         async ({
@@ -636,10 +629,6 @@ builder.queryField('commanders', (t) =>
         data: result,
         timestamp: Date.now(),
       });
-
-      // console.log(
-      //   `💾 Cached commanders query result (cache size: ${queryCache.size})`,
-      // );
 
       return result;
     },

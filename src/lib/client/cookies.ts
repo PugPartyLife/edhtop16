@@ -1,7 +1,7 @@
 import {useState, useEffect, useRef, useCallback} from 'react';
 import {updateRelayPreferences} from './relay_client_environment';
 
-// Example preference types
+
 export interface CommandersPreferences {
   sortBy?: 'CONVERSION' | 'POPULARITY';
   timePeriod?:
@@ -52,7 +52,6 @@ export type PreferencesMap = {
   entry?: EntryPreferences;
   tournament?: TournamentPreferences;
   tournaments?: TournamentsPreferences;
-  // Add more as needed
 };
 
 export const DEFAULT_PREFERENCES: PreferencesMap = {
@@ -165,7 +164,6 @@ export function usePreferences<K extends keyof PreferencesMap>(
           (newPrefs as any)[prefKey] = value;
         }
 
-        // Save to cookie
         let allPrefs: PreferencesMap = {...DEFAULT_PREFERENCES};
         const cookieValue = getCookie('sitePreferences');
         if (cookieValue) {

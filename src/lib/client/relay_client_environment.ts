@@ -11,7 +11,6 @@ type PreferencesMap = {
   entry?: EntryPreferences;
   tournament?: TournamentPreferences;
   tournaments?: TournamentsPreferences;
-  // Add more as needed
 };
 
 let currentPreferences: PreferencesMap = {};
@@ -33,7 +32,7 @@ export function createClientNetwork() {
         variables,
 
         extensions: {
-          sitePreferences: currentPreferences, // generalized key
+          sitePreferences: currentPreferences,
         },
       };
 

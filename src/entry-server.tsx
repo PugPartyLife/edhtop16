@@ -29,7 +29,6 @@ function createDefaultPreferences(): PreferencesMap {
       minTournamentSize: 0,
       colorId: '',
     },
-    // Add other preference sets as needed
   };
 }
 
@@ -139,7 +138,7 @@ export function useCreateHandler(
     const env = createServerEnvironment(
       schema,
       persistedQueries,
-      preferences, // Pass the full PreferencesMap
+      preferences,
     );
 
     const RiverApp = await createRiverServerApp(

@@ -21,9 +21,8 @@ export const entrypoint: EntryPoint<
           parameters: TID_TournamentQueryParameters,
           variables: {
             TID: tid,
-            // Use defaults for SSR; client will update with cookies
             commander: undefined,
-            showStandings: true, // Default to showing standings
+            showStandings: true,
             showBreakdown: false,
             showBreakdownCommander: false,
           },

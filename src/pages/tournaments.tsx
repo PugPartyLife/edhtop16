@@ -35,7 +35,7 @@ import {LoadMoreButton} from '../components/load_more';
 import {Navigation} from '../components/navigation';
 import {NumberInputDropdown} from '../components/number_input_dropdown';
 
-// 🎯 Optimization 1: Memoized debounce factory
+
 const createDebouncer = <T extends (...args: any[]) => any>(
   func: T,
   delay: number,
@@ -47,7 +47,7 @@ const createDebouncer = <T extends (...args: any[]) => any>(
   }) as T;
 };
 
-// 🎯 Optimization 2: Memoized time period label mapping
+
 const TIME_PERIOD_LABELS = {
   ONE_MONTH: '1 Month',
   THREE_MONTHS: '3 Months',
@@ -57,7 +57,7 @@ const TIME_PERIOD_LABELS = {
   POST_BAN: 'Post Ban',
 } as const;
 
-// 🎯 Optimization 3: Static dropdown options (prevent recreation)
+
 const SORT_BY_OPTIONS = [
   {value: 'PLAYERS' as const, label: 'Tournament Size'},
   {value: 'DATE' as const, label: 'Date'},
@@ -107,7 +107,7 @@ function TournamentCard({
     commanderRef,
   );
 
-  // 🎯 Optimization 4: Memoized stats and images
+  
   const tournamentStats = useMemo(() => {
     return (
       <div className="flex justify-between">
@@ -147,7 +147,7 @@ function TournamentCard({
   );
 }
 
-// 🎯 Optimization 5: Simplified and memoized input handlers
+
 function useOptimizedMinSizeHandler(updatePreference: Function) {
   return useMemo(() => {
     const debouncedMinSize = createDebouncer((value: string) => {
@@ -205,20 +205,20 @@ function TournamentsPageShell({
     description: 'Discover top and recent cEDH tournaments!',
   });
 
-  // 🎯 Optimization 6: Simplified local state management
+  
   const [localMinSize, setLocalMinSize] = useState(() =>
     minSize > 0 ? minSize.toString() : ''
   );
 
-  // 🎯 Optimization 7: Memoized handlers
+  
   const minSizeHandlers = useOptimizedMinSizeHandler(updatePreference);
 
-  // 🎯 Optimization 8: Sync local state with props efficiently
+  
   useEffect(() => {
     setLocalMinSize(minSize > 0 ? minSize.toString() : '');
   }, [minSize]);
 
-  // 🎯 Optimization 9: Memoized preference handlers
+  
   const handleSortByChange = useCallback((value: 'PLAYERS' | 'DATE') => {
     updatePreference('sortBy' as keyof PreferencesMap['tournaments'], value);
   }, [updatePreference]);
@@ -227,7 +227,7 @@ function TournamentsPageShell({
     updatePreference('timePeriod' as keyof PreferencesMap['tournaments'], value);
   }, [updatePreference]);
 
-  // 🎯 Optimization 10: Memoized current values
+  
   const currentSortByLabel = useMemo(() =>
     sortBy === 'PLAYERS' ? 'Tournament Size' : 'Date',
     [sortBy]
@@ -299,13 +299,13 @@ export const TournamentsPage: EntryPointComponent<
   {tournamentQueryRef: tournaments_TournamentsQuery},
   {}
 > = ({queries}) => {
-  // 🎯 Optimization 11: Enhanced cookie preferences with better defaults
+  
   const {preferences, updatePreference, isHydrated} = usePreferences(
     'tournaments',
     DEFAULT_PREFERENCES.tournaments!,
   );
 
-  // 🎯 Optimization 12: Simplified server preferences check
+  
   const serverPreferences = useMemo(() => {
     if (typeof window !== 'undefined' && (window as any).__SERVER_PREFERENCES__) {
       return (window as any).__SERVER_PREFERENCES__;
@@ -345,14 +345,14 @@ export const TournamentsPage: EntryPointComponent<
       query,
     );
 
-  // 🎯 Optimization 13: Memoized derived values
+  
   const currentPreferences = useMemo(() => ({
     sortBy: preferences?.sortBy || 'DATE' as const,
     timePeriod: preferences?.timePeriod || 'ALL_TIME' as const,
     minSize: preferences?.minSize || 0,
   }), [preferences]);
 
-  // 🎯 Optimization 14: Stable refetch and load more handlers
+  
   const handleRefetch = useCallback(() => {
     console.log('🔄 [TOURNAMENTS] Refetch triggered by preferences change');
     startTransition(() => {
@@ -366,7 +366,7 @@ export const TournamentsPage: EntryPointComponent<
     });
   }, [loadNext]);
 
-  // 🎯 Optimization 15: Simplified hydration and refetch setup
+  
   const hasRefetchedRef = useRef(false);
 
   useEffect(() => {
@@ -387,11 +387,11 @@ export const TournamentsPage: EntryPointComponent<
         needsRefetch: !prefsMatch,
       });
 
-      // Refetch will be triggered automatically by cookies.ts if preferences don't match
+      
     }
   }, [isHydrated, preferences, serverPreferences]);
 
-  // 🎯 Optimization 16: Memoized tournament cards rendering
+  
   const tournamentCards = useMemo(() => (
     data.tournaments.edges.map((edge) => (
       <TournamentCard key={edge.node.id} commander={edge.node} />

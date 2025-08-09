@@ -12,15 +12,11 @@ export const entrypoint: EntryPoint<
 > = {
   root: JSResource.fromModuleId('m#tournaments'),
   getPreloadProps() {
-    // console.log(
-    //   '🍪 [SERVER] Using server defaults - cookies will be handled client-side',
-    // );
-
     return {
       queries: {
         tournamentQueryRef: {
           parameters: TournamentsQueryParameters,
-          variables: {}, // Empty variables - let client handle preferences
+          variables: {},
         },
       },
     };

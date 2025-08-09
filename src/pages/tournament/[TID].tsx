@@ -17,6 +17,7 @@ import {
   useEffect,
   useRef,
   startTransition,
+  memo,
 } from 'react';
 import {
   EntryPointComponent,
@@ -38,18 +39,26 @@ import {FirstPartyPromo} from '../../components/promo';
 import {Tab, TabList} from '../../components/tabs';
 import {formatOrdinals, formatPercent} from '../../lib/client/format';
 
-function debounce<T extends (...args: any[]) => any>(
+
+const DEFAULT_PREFERENCES = {
+  tab: 'entries' as const,
+  commander: null,
+} as const;
+
+
+const createDebouncedFunction = <T extends (...args: any[]) => any>(
   func: T,
   delay: number,
-): T {
+): T => {
   let timeoutId: NodeJS.Timeout;
   return ((...args: any[]) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
   }) as T;
-}
+};
 
-function EntryCard({
+
+const EntryCard = memo(function EntryCard({
   highlightFirst = true,
   ...props
 }: {
@@ -82,16 +91,19 @@ function EntryCard({
     props.entry,
   );
 
-  let entryName = `${entry.player?.name ?? 'Unknown Player'}`;
-  if (entry.standing === 1) {
-    entryName = `🥇 ${entryName}`;
-  } else if (entry.standing === 2) {
-    entryName = `🥈 ${entryName}`;
-  } else if (entry.standing === 3) {
-    entryName = `🥉 ${entryName}`;
-  }
+  const entryName = useMemo(() => {
+    const playerName = entry.player?.name ?? 'Unknown Player';
+    if (entry.standing === 1) {
+      return `🥇 ${playerName}`;
+    } else if (entry.standing === 2) {
+      return `🥈 ${playerName}`;
+    } else if (entry.standing === 3) {
+      return `🥉 ${playerName}`;
+    }
+    return playerName;
+  }, [entry.player?.name, entry.standing]);
 
-  const entryNameNode = (
+  const entryNameNode = useMemo(() => (
     <span className="relative flex items-baseline">
       {entryName}
       {entry.player?.isKnownCheater && (
@@ -100,31 +112,38 @@ function EntryCard({
         </span>
       )}
     </span>
-  );
+  ), [entryName, entry.player?.isKnownCheater]);
 
-  const bottomText = (
+  const bottomText = useMemo(() => (
     <div className="flex">
       <span className="flex-1">{formatOrdinals(entry.standing)} place</span>
       <span>
         Wins: {entry.wins} / Losses: {entry.losses} / Draws: {entry.draws}
       </span>
     </div>
+  ), [entry.standing, entry.wins, entry.losses, entry.draws]);
+
+  const cardImages = useMemo(() => 
+    entry.commander.cards
+      .flatMap((c) => c.imageUrls)
+      .map((img) => ({
+        src: img,
+        alt: `${entry.commander.name} art`,
+      })),
+    [entry.commander.cards, entry.commander.name]
   );
+
+  const cardClassName = useMemo(() => cn(
+    'group',
+    highlightFirst &&
+      'md:first:col-span-2 lg:max-w-3xl lg:first:col-span-3 lg:first:w-full lg:first:justify-self-center',
+  ), [highlightFirst]);
 
   return (
     <Card
-      className={cn(
-        'group',
-        highlightFirst &&
-          'md:first:col-span-2 lg:max-w-3xl lg:first:col-span-3 lg:first:w-full lg:first:justify-self-center',
-      )}
+      className={cardClassName}
       bottomText={bottomText}
-      images={entry.commander.cards
-        .flatMap((c) => c.imageUrls)
-        .map((img) => ({
-          src: img,
-          alt: `${entry.commander.name} art`,
-        }))}
+      images={cardImages}
     >
       <div className="flex h-32 flex-col space-y-2 lg:group-first:h-40">
         {entry.decklist ? (
@@ -148,9 +167,10 @@ function EntryCard({
       </div>
     </Card>
   );
-}
+});
 
-function BreakdownGroupCard({
+
+const BreakdownGroupCard = memo(function BreakdownGroupCard({
   onClickGroup,
   ...props
 }: {
@@ -177,28 +197,37 @@ function BreakdownGroupCard({
     props.group,
   );
 
+  const bottomText = useMemo(() => (
+    <div className="flex flex-wrap justify-between gap-1">
+      <span>Top Cuts: {topCuts}</span>
+      <span>Entries: {entries}</span>
+      <span>Conversion: {formatPercent(conversionRate)}</span>
+    </div>
+  ), [topCuts, entries, conversionRate]);
+
+  const cardImages = useMemo(() => 
+    commander.cards
+      .flatMap((c) => c.imageUrls)
+      .map((img) => ({
+        src: img,
+        alt: `${commander.name} art`,
+      })),
+    [commander.cards, commander.name]
+  );
+
+  const handleClick = useCallback(() => {
+    onClickGroup?.(commander.name);
+  }, [onClickGroup, commander.name]);
+
   return (
     <Card
-      bottomText={
-        <div className="flex flex-wrap justify-between gap-1">
-          <span>Top Cuts: {topCuts}</span>
-          <span>Entries: {entries}</span>
-          <span>Conversion: {formatPercent(conversionRate)}</span>
-        </div>
-      }
-      images={commander.cards
-        .flatMap((c) => c.imageUrls)
-        .map((img) => ({
-          src: img,
-          alt: `${commander.name} art`,
-        }))}
+      bottomText={bottomText}
+      images={cardImages}
     >
       <div className="flex h-32 flex-col space-y-2">
         <button
           className="text-left text-xl font-bold underline decoration-transparent transition-colors group-hover:decoration-inherit"
-          onClick={() => {
-            onClickGroup?.(commander.name);
-          }}
+          onClick={handleClick}
         >
           {commander.name}
         </button>
@@ -207,9 +236,10 @@ function BreakdownGroupCard({
       </div>
     </Card>
   );
-}
+});
 
-function TournamentBanner(props: {tournament: TID_TournamentBanner$key}) {
+
+const TournamentBanner = memo(function TournamentBanner(props: {tournament: TID_TournamentBanner$key}) {
   const tournament = useFragment(
     graphql`
       fragment TID_TournamentBanner on Tournament {
@@ -237,28 +267,36 @@ function TournamentBanner(props: {tournament: TID_TournamentBanner$key}) {
     } catch (e) {
       return null;
     }
-  }, [tournament]);
+  }, [tournament.bracketUrl]);
+
+  const formattedDate = useMemo(() => 
+    format(tournament.tournamentDate, 'MMMM do yyyy'),
+    [tournament.tournamentDate]
+  );
+
+  const winnerImages = useMemo(() => {
+    if (!tournament.winner[0]) return [];
+    return tournament.winner[0].commander.cards.flatMap((c) => c.imageUrls);
+  }, [tournament.winner]);
+
+  const hasWinner = tournament.winner[0] != null;
 
   return (
     <div className="h-64 w-full bg-black/60 md:h-80">
       <div className="relative mx-auto flex h-full w-full max-w-(--breakpoint-xl) flex-col items-center justify-center space-y-4">
-        {tournament.winner[0] != null && (
+        {hasWinner && (
           <div className="absolute top-0 left-0 flex h-full w-full brightness-40">
-            {tournament.winner[0].commander.cards
-              .flatMap((c) => c.imageUrls)
-              .map((src, _i, {length}) => {
-                return (
-                  <img
-                    className={cn(
-                      'flex-1 object-cover object-top',
-                      length === 2 ? 'w-1/2' : 'w-full',
-                    )}
-                    key={src}
-                    src={src}
-                    alt={`${tournament.name} winner art`}
-                  />
-                );
-              })}
+            {winnerImages.map((src, _i, {length}) => (
+              <img
+                className={cn(
+                  'flex-1 object-cover object-top',
+                  length === 2 ? 'w-1/2' : 'w-full',
+                )}
+                key={src}
+                src={src}
+                alt={`${tournament.name} winner art`}
+              />
+            ))}
           </div>
         )}
 
@@ -279,13 +317,14 @@ function TournamentBanner(props: {tournament: TID_TournamentBanner$key}) {
           {tournament.name}
         </h1>
         <div className="relative flex w-full max-w-(--breakpoint-md) flex-col items-center justify-evenly gap-1 text-base text-white md:flex-row md:text-lg lg:text-xl">
-          <span>{format(tournament.tournamentDate, 'MMMM do yyyy')}</span>
+          <span>{formattedDate}</span>
           <span>{tournament.size} Players</span>
         </div>
       </div>
     </div>
   );
-}
+});
+
 
 function useTournamentMeta(tournamentFromProps: TID_TournamentMeta$key) {
   const tournament = useFragment(
@@ -303,7 +342,8 @@ function useTournamentMeta(tournamentFromProps: TID_TournamentMeta$key) {
   });
 }
 
-function TournamentPageShell({
+
+const TournamentPageShell = memo(function TournamentPageShell({
   tab,
   commanderName,
   updatePreference,
@@ -344,7 +384,6 @@ function TournamentPageShell({
 
       updatePreference('tab' as keyof PreferencesMap['tournament'], nextKey);
 
-      // If switching away from commander tab, clear the commander selection
       if (nextKey !== 'commander') {
         updatePreference(
           'commander' as keyof PreferencesMap['tournament'],
@@ -354,6 +393,8 @@ function TournamentPageShell({
     },
     [updatePreference],
   );
+
+  const showCommanderTab = commanderName != null;
 
   return (
     <>
@@ -374,7 +415,7 @@ function TournamentPageShell({
           Metagame Breakdown
         </Tab>
 
-        {commanderName != null && (
+        {showCommanderTab && (
           <Tab id="commander" selected={tab === 'commander'}>
             {commanderName}
           </Tab>
@@ -384,7 +425,7 @@ function TournamentPageShell({
       {children}
     </>
   );
-}
+});
 
 /** @resource m#tournament_view */
 export const TournamentViewPage: EntryPointComponent<
@@ -393,83 +434,45 @@ export const TournamentViewPage: EntryPointComponent<
 > = ({queries}) => {
   const {preferences, updatePreference, isHydrated} = usePreferences(
     'tournament',
-    {
-      tab: 'entries',
-      commander: null,
-    },
+    DEFAULT_PREFERENCES,
   );
   const hasRefetchedRef = useRef(false);
 
+  
   const serverPreferences = useMemo(() => {
     if (
       typeof window !== 'undefined' &&
       (window as any).__SERVER_PREFERENCES__
     ) {
-      const prefs = (window as any).__SERVER_PREFERENCES__;
-      return prefs;
+      return (window as any).__SERVER_PREFERENCES__;
     }
     return null;
   }, []);
 
-  let timeoutId: NodeJS.Timeout;
-  // After hydration, set up refetch handling without URL updates
+  
   const handleRefetch = useCallback(() => {
-    // For tournament pages, we don't need to refetch when switching tabs
-    // since all the data (entries, breakdown, breakdownEntries) is already loaded
-    // We're just showing/hiding different parts of the same data
-    //console.log('Refetch triggered but skipping for tournament tab changes');
+    
   }, []);
 
+  
   useEffect(() => {
     setRefetchCallback(handleRefetch);
     return clearRefetchCallback;
   }, [handleRefetch]);
 
+  
   useEffect(() => {
     if (isHydrated && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
 
-      const actualServerPrefs = serverPreferences || {
-        tab: 'entries',
-        commander: null,
-      };
+      const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES;
+      const prefsMatch = JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
 
-      const prefsMatch =
-        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
-
-      // Only reload if preferences significantly differ
-      // For tab/commander changes, we don't need to refetch since all data is already loaded
       if (!prefsMatch) {
-        // Don't automatically refetch for simple tab changes
-        //console.log(
-        //  'Preferences differ but not triggering refetch for tab changes',
-        //);
+        
       }
     }
-  }, [isHydrated, preferences, serverPreferences, handleRefetch]);
-
-  useEffect(() => {
-    if (isHydrated && !hasRefetchedRef.current) {
-      hasRefetchedRef.current = true;
-
-      const actualServerPrefs = serverPreferences || {
-        tab: 'entries',
-        commander: null,
-      };
-
-      const prefsMatch =
-        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
-
-      // Only reload if preferences significantly differ
-      // For tab/commander changes, we don't need to refetch since all data is already loaded
-      if (!prefsMatch) {
-        // Don't automatically refetch for simple tab changes
-        //console.log(
-        //  'Preferences differ but not triggering refetch for tab changes',
-        //);
-      }
-    }
-  }, [isHydrated, preferences, serverPreferences, handleRefetch]);
+  }, [isHydrated, preferences, serverPreferences]);
 
   const {tournament} = usePreloadedQuery(
     graphql`
@@ -507,99 +510,90 @@ export const TournamentViewPage: EntryPointComponent<
     queries.tournamentQueryRef,
   );
 
-  // Don't render preference-dependent content until hydrated
+  
+  const handleCommanderSelect = useCallback((commanderName: string) => {
+    updatePreference(
+      'commander' as keyof PreferencesMap['tournament'],
+      commanderName,
+    );
+    updatePreference(
+      'tab' as keyof PreferencesMap['tournament'],
+      'commander',
+    );
+  }, [updatePreference]);
+
+  
+  const currentTabFromQuery = useMemo(() => {
+    if (queries.tournamentQueryRef.variables.showBreakdown) return 'breakdown';
+    if (queries.tournamentQueryRef.variables.showBreakdownCommander) return 'commander';
+    return 'entries';
+  }, [queries.tournamentQueryRef.variables]);
+
+  const commanderFromQuery = queries.tournamentQueryRef.variables.commander;
+
+  
+  const standingsEntries = useMemo(() => 
+    tournament.entries?.map((entry) => (
+      <EntryCard key={entry.id} entry={entry} />
+    )) || [],
+    [tournament.entries]
+  );
+
+  const breakdownCards = useMemo(() => 
+    tournament.breakdown?.map((group) => (
+      <BreakdownGroupCard
+        key={group.commander.id}
+        group={group}
+        onClickGroup={handleCommanderSelect}
+      />
+    )) || [],
+    [tournament.breakdown, handleCommanderSelect]
+  );
+
+  const commanderEntries = useMemo(() => 
+    tournament.breakdownEntries?.map((entry) => (
+      <EntryCard key={entry.id} entry={entry} highlightFirst={false} />
+    )) || [],
+    [tournament.breakdownEntries]
+  );
+
+  
+  const shellProps = useMemo(() => ({
+    tournament,
+    commanderName: (isHydrated ? preferences?.commander : commanderFromQuery) || null,
+    tab: isHydrated ? (preferences?.tab || 'entries') : currentTabFromQuery,
+    updatePreference,
+  }), [tournament, isHydrated, preferences, commanderFromQuery, currentTabFromQuery, updatePreference]);
+
+  
+  const currentContent = useMemo(() => {
+    const currentTab = preferences?.tab || 'entries';
+    
+    if (currentTab === 'entries') return standingsEntries;
+    if (currentTab === 'breakdown') return breakdownCards;
+    if (currentTab === 'commander') return commanderEntries;
+    
+    return [];
+  }, [preferences?.tab, standingsEntries, breakdownCards, commanderEntries]);
+
   if (!isHydrated) {
     return (
-      <TournamentPageShell
-        tournament={tournament}
-        commanderName={queries.tournamentQueryRef.variables.commander}
-        tab={
-          queries.tournamentQueryRef.variables.showBreakdown
-            ? 'breakdown'
-            : queries.tournamentQueryRef.variables.showBreakdownCommander
-              ? 'commander'
-              : 'entries'
-        }
-        updatePreference={updatePreference}
-      >
+      <TournamentPageShell {...shellProps}>
         <div className="mx-auto grid w-full max-w-(--breakpoint-xl) grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
-          {queries.tournamentQueryRef.variables.showStandings &&
-            tournament.entries != null &&
-            tournament.entries.map((entry) => (
-              <EntryCard key={entry.id} entry={entry} />
-            ))}
-
-          {queries.tournamentQueryRef.variables.showBreakdown &&
-            tournament.breakdown &&
-            tournament.breakdown.map((group) => (
-              <BreakdownGroupCard
-                key={group.commander.id}
-                group={group}
-                onClickGroup={(commanderName) => {
-                  updatePreference(
-                    'commander' as keyof PreferencesMap['tournament'],
-                    commanderName,
-                  );
-                  updatePreference(
-                    'tab' as keyof PreferencesMap['tournament'],
-                    'commander',
-                  );
-                }}
-              />
-            ))}
-
-          {queries.tournamentQueryRef.variables.showBreakdownCommander &&
-            tournament.breakdownEntries &&
-            tournament.breakdownEntries.map((entry) => (
-              <EntryCard key={entry.id} entry={entry} highlightFirst={false} />
-            ))}
+          {queries.tournamentQueryRef.variables.showStandings && standingsEntries}
+          {queries.tournamentQueryRef.variables.showBreakdown && breakdownCards}
+          {queries.tournamentQueryRef.variables.showBreakdownCommander && commanderEntries}
         </div>
-
         <Footer />
       </TournamentPageShell>
     );
   }
 
   return (
-    <TournamentPageShell
-      tournament={tournament}
-      commanderName={preferences?.commander || null}
-      tab={preferences?.tab || 'entries'}
-      updatePreference={updatePreference}
-    >
+    <TournamentPageShell {...shellProps}>
       <div className="mx-auto grid w-full max-w-(--breakpoint-xl) grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
-        {preferences?.tab === 'entries' &&
-          tournament.entries != null &&
-          tournament.entries.map((entry) => (
-            <EntryCard key={entry.id} entry={entry} />
-          ))}
-
-        {preferences?.tab === 'breakdown' &&
-          tournament.breakdown &&
-          tournament.breakdown.map((group) => (
-            <BreakdownGroupCard
-              key={group.commander.id}
-              group={group}
-              onClickGroup={(commanderName) => {
-                updatePreference(
-                  'commander' as keyof PreferencesMap['tournament'],
-                  commanderName,
-                );
-                updatePreference(
-                  'tab' as keyof PreferencesMap['tournament'],
-                  'commander',
-                );
-              }}
-            />
-          ))}
-
-        {preferences?.tab === 'commander' &&
-          tournament.breakdownEntries &&
-          tournament.breakdownEntries.map((entry) => (
-            <EntryCard key={entry.id} entry={entry} highlightFirst={false} />
-          ))}
+        {currentContent}
       </div>
-
       <Footer />
     </TournamentPageShell>
   );

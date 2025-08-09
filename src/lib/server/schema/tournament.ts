@@ -219,18 +219,15 @@ const TournamentFiltersInput = builder.inputType('TournamentFilters', {
   }),
 });
 
-// Updated tournaments resolver to use preferences from cookies
 builder.queryField('tournaments', (t) =>
   t.connection({
     type: Tournament,
     args: {
       search: t.arg.string(),
-      // Keep legacy filters for backward compatibility, but preferences take precedence
       filters: t.arg({type: TournamentFiltersInput}),
       sortBy: t.arg({type: TournamentSortBy, defaultValue: 'DATE'}),
     },
     resolve: async (_, args, context) => {
-      // Extract preferences from context (cookies strategy)
       const preferences = context.preferences.tournaments || {
         sortBy: 'DATE',
         timePeriod: 'ALL_TIME',
@@ -246,18 +243,15 @@ builder.queryField('tournaments', (t) =>
           query = query.where('name', 'like', `%${args.search}%`);
         }
 
-        // Apply minSize filter from preferences (takes precedence over args.filters)
         const minSize = preferences.minSize || args.filters?.minSize || 0;
         if (minSize > 0) {
           query = query.where('size', '>=', minSize);
         }
 
-        // Apply maxSize filter (legacy support)
         if (args.filters?.maxSize) {
           query = query.where('size', '<=', args.filters.maxSize);
         }
 
-        // Apply timePeriod filter from preferences (takes precedence over args.filters)
         const timePeriod = preferences.timePeriod || args.filters?.timePeriod;
         if (timePeriod && timePeriod !== 'ALL_TIME') {
           const minDate = args.filters?.minDate
@@ -266,7 +260,6 @@ builder.queryField('tournaments', (t) =>
 
           query = query.where('tournamentDate', '>=', minDate.toISOString());
         } else if (args.filters?.minDate) {
-          // Fallback to legacy minDate if no timePeriod preference
           query = query.where(
             'tournamentDate',
             '>=',
@@ -274,26 +267,17 @@ builder.queryField('tournaments', (t) =>
           );
         }
 
-        // Apply maxDate filter (legacy support)
         const maxDate = args.filters?.maxDate
           ? new Date(args.filters.maxDate)
           : new Date();
         query = query.where('tournamentDate', '<=', maxDate.toISOString());
 
-        // Apply sortBy from preferences (takes precedence over args.sortBy)
         const sortBy = preferences.sortBy || args.sortBy || 'DATE';
         if (sortBy === 'PLAYERS') {
           query = query.orderBy(['size desc', 'tournamentDate desc']);
         } else {
           query = query.orderBy(['tournamentDate desc', 'size desc']);
         }
-
-        //console.log('🔧 [SERVER] Applied filters:', {
-//          minSize,
-//          timePeriod,
-//          sortBy,
-//          hasSearch: !!args.search,
-//        });
 
         return query.limit(limit).offset(offset).execute();
       });

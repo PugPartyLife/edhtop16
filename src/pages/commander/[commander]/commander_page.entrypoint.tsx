@@ -21,7 +21,6 @@ export const entrypoint: EntryPoint<
           parameters: CommanderQueryParameters,
           variables: {
             commander,
-            // Use defaults for SSR; client will update with cookies
             sortBy: 'TOP',
             timePeriod: 'ONE_YEAR',
             maxStanding: undefined,

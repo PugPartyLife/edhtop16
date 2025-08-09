@@ -30,14 +30,9 @@ export function createServerEnvironment(
     const contextValue = createContext(
       topdeckClient,
       preferences ?? {commanders: {}},
-      () => {}, // no-op for setPreferences on server
+      () => {},
     );
-
-    // console.log(
-    //   '🏗️ SSR GraphQL: Executing with context preferences:',
-    //   contextValue.preferences,
-    // );
-
+    
     const results = await graphql({
       schema,
       source,

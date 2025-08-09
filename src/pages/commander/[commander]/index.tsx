@@ -21,6 +21,7 @@ import {
   startTransition,
   useMemo,
   useRef,
+  memo,
 } from 'react';
 import {
   EntryPointComponent,
@@ -46,18 +47,64 @@ import {FirstPartyPromo} from '../../../components/promo';
 import {Select} from '../../../components/select';
 import {formatOrdinals, formatPercent} from '../../../lib/client/format';
 
-function debounce<T extends (...args: any[]) => any>(
+
+const createDebouncedFunction = <T extends (...args: any[]) => any>(
   func: T,
   delay: number,
-): T {
+): T => {
   let timeoutId: NodeJS.Timeout;
   return ((...args: any[]) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
   }) as T;
-}
+};
 
-function EntryCard(props: {entry: Commander_EntryCard$key}) {
+
+const TIME_PERIOD_LABELS: Partial<Record<TimePeriod, string>> = {
+  ONE_MONTH: '1 Month',
+  THREE_MONTHS: '3 Months',
+  SIX_MONTHS: '6 Months',
+  ONE_YEAR: '1 Year',
+  ALL_TIME: 'All Time',
+  POST_BAN: 'Post Ban',
+};
+
+const DROPDOWN_OPTIONS = {
+  sortBy: [
+    {value: 'TOP' as EntriesSortBy, label: 'Top Performing'},
+    {value: 'NEW' as EntriesSortBy, label: 'Recent'},
+  ],
+  timePeriod: [
+    {value: 'ONE_MONTH', label: '1 Month'},
+    {value: 'THREE_MONTHS', label: '3 Months'},
+    {value: 'SIX_MONTHS', label: '6 Months'},
+    {value: 'ONE_YEAR', label: '1 Year'},
+    {value: 'ALL_TIME', label: 'All Time'},
+    {value: 'POST_BAN', label: 'Post Ban'},
+  ],
+  eventSize: [
+    {value: null, label: 'All Events'},
+    {value: 32, label: '32+ - Medium Events'},
+    {value: 60, label: '60+ - Large Events'},
+    {value: 100, label: '100+ - Major Events'},
+  ],
+  maxStanding: [
+    {value: null, label: 'All Players'},
+    {value: 1, label: 'Tournament Winners'},
+    {value: 4, label: 'Top 4'},
+    {value: 16, label: 'Top 16'},
+  ],
+};
+
+const DEFAULT_PREFERENCES = {
+  sortBy: 'TOP' as const,
+  timePeriod: 'ONE_YEAR' as const,
+  minEventSize: null,
+  maxStanding: null,
+} as const;
+
+
+const EntryCard = memo(function EntryCard(props: {entry: Commander_EntryCard$key}) {
   const entry = useFragment(
     graphql`
       fragment Commander_EntryCard on Entry {
@@ -83,16 +130,19 @@ function EntryCard(props: {entry: Commander_EntryCard$key}) {
     props.entry,
   );
 
-  let entryName = `${entry.player?.name ?? 'Unknown Player'}`;
-  if (entry.standing === 1) {
-    entryName = `🥇 ${entryName}`;
-  } else if (entry.standing <= 4) {
-    entryName = `🥈 ${entryName}`;
-  } else if (entry.standing <= 16) {
-    entryName = `🥉 ${entryName}`;
-  }
+  const entryName = useMemo(() => {
+    const playerName = entry.player?.name ?? 'Unknown Player';
+    if (entry.standing === 1) {
+      return `🥇 ${playerName}`;
+    } else if (entry.standing <= 4) {
+      return `🥈 ${playerName}`;
+    } else if (entry.standing <= 16) {
+      return `🥉 ${playerName}`;
+    }
+    return playerName;
+  }, [entry.player?.name, entry.standing]);
 
-  const entryNameNode = (
+  const entryNameNode = useMemo(() => (
     <span className="relative flex items-baseline">
       {entryName}
       {entry.player?.isKnownCheater && (
@@ -101,19 +151,23 @@ function EntryCard(props: {entry: Commander_EntryCard$key}) {
         </span>
       )}
     </span>
-  );
+  ), [entryName, entry.player?.isKnownCheater]);
 
-  const bottomText = (
+  const bottomText = useMemo(() => (
     <div className="flex">
       <span className="flex-1">
         {formatOrdinals(entry.standing)}&nbsp;/&nbsp;
         {entry.tournament.size} players
       </span>
-
       <span>
         Wins: {entry.wins} / Losses: {entry.losses} / Draws: {entry.draws}
       </span>
     </div>
+  ), [entry.standing, entry.tournament.size, entry.wins, entry.losses, entry.draws]);
+
+  const formattedDate = useMemo(() => 
+    format(entry.tournament.tournamentDate, 'MMMM do yyyy'),
+    [entry.tournament.tournamentDate]
   );
 
   return (
@@ -138,14 +192,15 @@ function EntryCard(props: {entry: Commander_EntryCard$key}) {
           {entry.tournament.name}
         </Link>
         <span className="line-clamp-1 text-sm opacity-70">
-          {format(entry.tournament.tournamentDate, 'MMMM do yyyy')}
+          {formattedDate}
         </span>
       </div>
     </Card>
   );
-}
+});
 
-function CommanderBanner(props: {
+
+const CommanderBanner = memo(function CommanderBanner(props: {
   commander: Commander_CommanderBanner$key;
   dynamicStats?: {
     count: number;
@@ -176,52 +231,45 @@ function CommanderBanner(props: {
     props.commander,
   );
 
-  // Enhanced logging for CommanderBanner query execution and stats
-//  console.group(`🎯 CommanderBanner - ${commander.name}`);
-//  console.log('📊 Fragment executed at:', new Date().toISOString());
-//  console.log('📈 Commander stats from GraphQL:', commander.stats);
-//  console.log('🔄 Dynamic stats from props:', props.dynamicStats);
-//  console.log(
-//    '🎲 Stats source:',
-//    props.dynamicStats ? 'Dynamic (props)' : 'Static (GraphQL)',
-//  );
+  const stats = useMemo(() => 
+    props.dynamicStats || commander.stats,
+    [props.dynamicStats, commander.stats]
+  );
 
-  // Log when stats change
-  useEffect(() => {
-    const stats = commander.stats || props.dynamicStats;
-    //console.log('📋 Stats updated:', {
-    //  timestamp: new Date().toISOString(),
-    //  source: props.dynamicStats ? 'Dynamic' : 'GraphQL',
-    //  stats: stats,
-    //  commander: commander.name,
-    //});
-  }, [props.dynamicStats, commander.stats, commander.name]);
+  const cardImages = useMemo(() => 
+    commander.cards.flatMap((c) => c.imageUrls),
+    [commander.cards]
+  );
 
-  // Use dynamic stats if provided, otherwise fall back to static stats
-  const stats = props.dynamicStats || commander.stats;
+  const topCutBiasValue = useMemo(() => 
+    stats.topCutBias > 0
+      ? (stats.topCuts / stats.topCutBias).toFixed(1)
+      : '0.0',
+    [stats.topCuts, stats.topCutBias]
+  );
 
-  //console.log('✅ Final stats being used:', stats);
-  //console.groupEnd();
+  const statsDisplay = useMemo(() => ({
+    entries: stats.count,
+    metaShare: formatPercent(stats.metaShare),
+    conversionRate: formatPercent(stats.conversionRate),
+    topCutBias: topCutBiasValue,
+  }), [stats.count, stats.metaShare, stats.conversionRate, topCutBiasValue]);
 
   return (
     <div className="h-64 w-full bg-black/60 md:h-80">
       <div className="relative mx-auto flex h-full w-full max-w-(--breakpoint-xl) flex-col items-center justify-center">
         <div className="absolute top-0 left-0 flex h-full w-full brightness-40">
-          {commander.cards
-            .flatMap((c) => c.imageUrls)
-            .map((src, _i, {length}) => {
-              return (
-                <img
-                  className={cn(
-                    'flex-1 object-cover object-top',
-                    length === 2 ? 'w-1/2' : 'w-full',
-                  )}
-                  key={src}
-                  src={src}
-                  alt={`${commander.name} art`}
-                />
-              );
-            })}
+          {cardImages.map((src, _i, {length}) => (
+            <img
+              className={cn(
+                'flex-1 object-cover object-top',
+                length === 2 ? 'w-1/2' : 'w-full',
+              )}
+              key={src}
+              src={src}
+              alt={`${commander.name} art`}
+            />
+          ))}
         </div>
 
         <h1 className="font-title relative m-0 mb-4 text-center text-2xl font-semibold text-white md:text-4xl lg:text-5xl">
@@ -233,27 +281,25 @@ function CommanderBanner(props: {
         </div>
 
         <div className="absolute bottom-0 z-10 mx-auto flex w-full items-center justify-around border-t border-white/60 bg-black/50 px-3 text-center text-sm text-white sm:bottom-3 sm:w-auto sm:rounded-lg sm:border">
-          {stats.count} Entries
+          {statsDisplay.entries} Entries
           <div className="mr-1 ml-2 border-l border-white/60 py-2">
             &nbsp;
           </div>{' '}
-          {formatPercent(stats.metaShare)} Meta%
+          {statsDisplay.metaShare} Meta%
           <div className="mr-1 ml-2 border-l border-white/60 py-2">
             &nbsp;
           </div>{' '}
-          {formatPercent(stats.conversionRate)} Conversion
+          {statsDisplay.conversionRate} Conversion
           <div className="mr-1 ml-2 border-l border-white/60 py-2">
             &nbsp;
           </div>{' '}
-          {stats.topCutBias > 0
-            ? (stats.topCuts / stats.topCutBias).toFixed(1)
-            : '0.0'}{' '}
-          Top Cut Bias
+          {statsDisplay.topCutBias} Top Cut Bias
         </div>
       </div>
     </div>
   );
-}
+});
+
 
 function useCommanderMeta(commanderFromProps: Commander_CommanderMeta$key) {
   const commander = useFragment(
@@ -271,7 +317,8 @@ function useCommanderMeta(commanderFromProps: Commander_CommanderMeta$key) {
   });
 }
 
-export function CommanderPageShell({
+
+export const CommanderPageShell = memo(function CommanderPageShell({
   disableNavigation,
   maxStanding,
   minEventSize,
@@ -279,7 +326,7 @@ export function CommanderPageShell({
   timePeriod,
   updatePreference,
   preferences,
-  dynamicStatsFromData, // Add this new prop
+  dynamicStatsFromData,
   children,
   ...props
 }: PropsWithChildren<{
@@ -291,7 +338,6 @@ export function CommanderPageShell({
   updatePreference: (key: keyof PreferencesMap['entry'], value: any) => void;
   preferences: PreferencesMap['entry'];
   dynamicStatsFromData?: {
-    // Add this type
     count: number;
     metaShare: number;
     conversionRate: number;
@@ -336,22 +382,10 @@ export function CommanderPageShell({
 
   useCommanderMeta(commander);
 
-  // Log and use the filtered stats
-  //console.group('🏠 CommanderPageShell with Filtered Stats');
-  //console.log('👤 Commander:', commander.name);
-  //console.log('🔧 Current filters:', {maxStanding, minEventSize, timePeriod});
-  //console.log('📊 Filtered stats from GraphQL:', commander.filteredStats);
-
-  // Use the filtered stats as dynamic stats
-  const dynamicStats = dynamicStatsFromData || commander.filteredStats;
-
-  //console.group('🏠 CommanderPageShell with Filtered Stats');
-  //console.log('👤 Commander:', commander.name);
-  //console.log('🔧 Current filters:', {maxStanding, minEventSize, timePeriod});
-  //console.log('📊 Filtered stats from commander:', commander.filteredStats);
-  //console.log('📊 Filtered stats from data:', dynamicStatsFromData);
-  //console.log('🎯 Using dynamic stats:', dynamicStats);
-  //console.groupEnd();
+  const dynamicStats = useMemo(() => 
+    dynamicStatsFromData || commander.filteredStats,
+    [dynamicStatsFromData, commander.filteredStats]
+  );
 
   const [localEventSize, setLocalEventSize] = useState(
     minEventSize?.toString() || '',
@@ -360,8 +394,9 @@ export function CommanderPageShell({
     maxStanding?.toString() || '',
   );
 
-  const debouncedUpdaters = useRef({
-    eventSize: debounce((value: string) => {
+  
+  const debouncedUpdaters = useMemo(() => ({
+    eventSize: createDebouncedFunction((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
       if (numValue === null || (!isNaN(numValue) && numValue >= 0)) {
         updatePreference(
@@ -370,7 +405,7 @@ export function CommanderPageShell({
         );
       }
     }, 250),
-    maxStanding: debounce((value: string) => {
+    maxStanding: createDebouncedFunction((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
       if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
         updatePreference(
@@ -379,30 +414,65 @@ export function CommanderPageShell({
         );
       }
     }, 250),
-  }).current;
+  }), [updatePreference]);
 
+  
   useEffect(() => {
     setLocalEventSize(minEventSize?.toString() || '');
     setLocalMaxStanding(maxStanding?.toString() || '');
   }, [minEventSize, maxStanding]);
 
-  const getTimePeriodLabel = (period: string) => {
-    const labels: {[key: string]: string} = {
-      ONE_MONTH: '1 Month',
-      THREE_MONTHS: '3 Months',
-      SIX_MONTHS: '6 Months',
-      ONE_YEAR: '1 Year',
-      ALL_TIME: 'All Time',
-      POST_BAN: 'Post Ban',
-    };
-    return labels[period] || '1 Year';
-  };
+  
+  const handleSortBySelect = useCallback((value: EntriesSortBy) => {
+    updatePreference('sortBy' as keyof PreferencesMap['entry'], value);
+  }, [updatePreference]);
+
+  const handleTimePeriodSelect = useCallback((value: string) => {
+    updatePreference('timePeriod' as keyof PreferencesMap['entry'], value);
+  }, [updatePreference]);
+
+  const handleEventSizeChange = useCallback((value: string) => {
+    setLocalEventSize(value);
+    debouncedUpdaters.eventSize(value);
+  }, [debouncedUpdaters]);
+
+  const handleEventSizeSelect = useCallback((value: number | null) => {
+    const stringValue = value?.toString() || '';
+    startTransition(() => {
+      setLocalEventSize(stringValue);
+    });
+    updatePreference('minEventSize' as keyof PreferencesMap['entry'], value);
+  }, [updatePreference]);
+
+  const handleMaxStandingChange = useCallback((value: string) => {
+    setLocalMaxStanding(value);
+    debouncedUpdaters.maxStanding(value);
+  }, [debouncedUpdaters]);
+
+  const handleMaxStandingSelect = useCallback((value: number | null) => {
+    const stringValue = value?.toString() || '';
+    startTransition(() => {
+      setLocalMaxStanding(stringValue);
+    });
+    updatePreference('maxStanding' as keyof PreferencesMap['entry'], value);
+  }, [updatePreference]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === 'Go') {
       (e.target as HTMLInputElement).blur();
     }
   }, []);
+
+  
+  const currentTimePeriodLabel = useMemo(() => 
+    TIME_PERIOD_LABELS[preferences?.timePeriod || timePeriod || undefined] || TIME_PERIOD_LABELS.ONE_YEAR,
+    [preferences?.timePeriod, timePeriod]
+  );
+
+  const currentSortByLabel = useMemo(() => 
+    sortBy === 'TOP' ? 'Top Performing' : 'Recent',
+    [sortBy]
+  );
 
   return (
     <>
@@ -415,17 +485,9 @@ export function CommanderPageShell({
           <Dropdown
             id="commander-sort-by"
             label="Sort By"
-            value={sortBy === 'TOP' ? 'Top Performing' : 'Recent'}
-            options={[
-              {value: 'TOP' as EntriesSortBy, label: 'Top Performing'},
-              {value: 'NEW' as EntriesSortBy, label: 'Recent'},
-            ]}
-            onSelect={(value) => {
-              updatePreference(
-                'sortBy' as keyof PreferencesMap['entry'],
-                value,
-              );
-            }}
+            value={currentSortByLabel}
+            options={DROPDOWN_OPTIONS.sortBy}
+            onSelect={handleSortBySelect}
           />
         </div>
 
@@ -433,21 +495,9 @@ export function CommanderPageShell({
           <Dropdown
             id="commander-time-period"
             label="Time Period"
-            value={getTimePeriodLabel(preferences?.timePeriod || timePeriod)}
-            options={[
-              {value: 'ONE_MONTH', label: '1 Month'},
-              {value: 'THREE_MONTHS', label: '3 Months'},
-              {value: 'SIX_MONTHS', label: '6 Months'},
-              {value: 'ONE_YEAR', label: '1 Year'},
-              {value: 'ALL_TIME', label: 'All Time'},
-              {value: 'POST_BAN', label: 'Post Ban'},
-            ]}
-            onSelect={(value) => {
-              updatePreference(
-                'timePeriod' as keyof PreferencesMap['entry'],
-                value,
-              );
-            }}
+            value={currentTimePeriodLabel || ''}
+            options={DROPDOWN_OPTIONS.timePeriod}
+            onSelect={handleTimePeriodSelect}
           />
         </div>
 
@@ -459,26 +509,9 @@ export function CommanderPageShell({
             placeholder="Event Size"
             min="0"
             dropdownClassName="event-size-dropdown"
-            options={[
-              {value: null, label: 'All Events'},
-              {value: 32, label: '32+ - Medium Events'},
-              {value: 60, label: '60+ - Large Events'},
-              {value: 100, label: '100+ - Major Events'},
-            ]}
-            onChange={(value) => {
-              setLocalEventSize(value);
-              debouncedUpdaters.eventSize(value);
-            }}
-            onSelect={(value) => {
-              const stringValue = value?.toString() || '';
-              startTransition(() => {
-                setLocalEventSize(stringValue);
-              });
-              updatePreference(
-                'minEventSize' as keyof PreferencesMap['entry'],
-                value,
-              );
-            }}
+            options={DROPDOWN_OPTIONS.eventSize}
+            onChange={handleEventSizeChange}
+            onSelect={handleEventSizeSelect}
             onKeyDown={handleKeyDown}
           />
         </div>
@@ -491,26 +524,9 @@ export function CommanderPageShell({
             placeholder="Standing Cutoff"
             min="1"
             dropdownClassName="max-standing-dropdown"
-            options={[
-              {value: null, label: 'All Players'},
-              {value: 1, label: 'Tournament Winners'},
-              {value: 4, label: 'Top 4'},
-              {value: 16, label: 'Top 16'},
-            ]}
-            onChange={(value) => {
-              setLocalMaxStanding(value);
-              debouncedUpdaters.maxStanding(value);
-            }}
-            onSelect={(value) => {
-              const stringValue = value?.toString() || '';
-              startTransition(() => {
-                setLocalMaxStanding(stringValue);
-              });
-              updatePreference(
-                'maxStanding' as keyof PreferencesMap['entry'],
-                value,
-              );
-            }}
+            options={DROPDOWN_OPTIONS.maxStanding}
+            onChange={handleMaxStandingChange}
+            onSelect={handleMaxStandingSelect}
             onKeyDown={handleKeyDown}
           />
         </div>
@@ -518,28 +534,23 @@ export function CommanderPageShell({
       {children}
     </>
   );
-}
+});
 
 /** @resource m#commander_page */
 export const CommanderPage: EntryPointComponent<
   {commanderQueryRef: Commander_CommanderQuery},
   {}
 > = ({queries}) => {
-  const {preferences, updatePreference, isHydrated} = usePreferences('entry', {
-    sortBy: 'TOP',
-    timePeriod: 'ONE_YEAR',
-    minEventSize: null,
-    maxStanding: null,
-  });
+  const {preferences, updatePreference, isHydrated} = usePreferences('entry', DEFAULT_PREFERENCES);
   const hasRefetchedRef = useRef(false);
 
+  
   const serverPreferences = useMemo(() => {
     if (
       typeof window !== 'undefined' &&
       (window as any).__SERVER_PREFERENCES__
     ) {
-      const prefs = (window as any).__SERVER_PREFERENCES__;
-      return prefs;
+      return (window as any).__SERVER_PREFERENCES__;
     }
     return null;
   }, []);
@@ -620,28 +631,22 @@ export const CommanderPage: EntryPointComponent<
       commander,
     );
 
-  //console.log('📋 Current data object:', data);
+  
+  const refetchParams = useMemo(() => ({
+    sortBy: preferences?.sortBy || DEFAULT_PREFERENCES.sortBy,
+    timePeriod: preferences?.timePeriod || DEFAULT_PREFERENCES.timePeriod,
+    minEventSize: preferences?.minEventSize || undefined,
+    maxStanding: preferences?.maxStanding || undefined,
+  }), [preferences]);
 
+  
   const handleRefetch = useCallback(() => {
-    const refetchParams = {
-      sortBy: preferences?.sortBy || 'TOP',
-      timePeriod: preferences?.timePeriod || 'ONE_YEAR',
-      minEventSize: preferences?.minEventSize || undefined,
-      maxStanding: preferences?.maxStanding || undefined,
-    };
-
-   // console.group('🔄 CommanderPage Refetch Initiated');
-   // console.log('⏰ Timestamp:', new Date().toISOString());
-   // console.log('📋 Refetch Parameters:', refetchParams);
-   // console.log('👤 Commander:', commander.name || 'Unknown');
-   // console.log('🎯 This will trigger filteredStats resolver on backend');
-   // console.groupEnd();
-
     startTransition(() => {
       refetch(refetchParams, {fetchPolicy: 'network-only'});
     });
-  }, [refetch, preferences, commander.name]);
+  }, [refetch, refetchParams]);
 
+  
   const handleLoadMore = useCallback(
     (count: number) => {
       startTransition(() => {
@@ -651,28 +656,21 @@ export const CommanderPage: EntryPointComponent<
     [loadNext],
   );
 
+  
   useEffect(() => {
     setRefetchCallback(handleRefetch);
     return clearRefetchCallback;
   }, [handleRefetch]);
 
+  
   useEffect(() => {
     if (isHydrated && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
 
-      const actualServerPrefs = serverPreferences || {
-        sortBy: 'TOP',
-        timePeriod: 'ONE_YEAR',
-        minEventSize: null,
-        maxStanding: null,
-      };
+      const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES;
+      const prefsMatch = JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
 
-      const prefsMatch =
-        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
-
-      // If client preferences differ from server defaults, refetch immediately
       if (!prefsMatch) {
-        //console.log('🔄 Client prefs differ from server, triggering refetch');
         setTimeout(() => {
           handleRefetch();
         }, 100);
@@ -680,35 +678,32 @@ export const CommanderPage: EntryPointComponent<
     }
   }, [isHydrated, preferences, serverPreferences, handleRefetch]);
 
-  // Log when query data updates
-  useEffect(() => {
-    if (data && commander) {
-    //  console.group('📊 CommanderPage Query Data Updated');
-    //  console.log('⏰ Timestamp:', new Date().toISOString());
-    //  console.log('👤 Commander:', commander.name);
-    //  console.log('📈 Entries count:', data.entries.edges.length);
-    //  console.log('🔗 Has more pages:', hasNext);
-    //  console.log('⚡ Is loading:', isLoadingNext);
-    //  console.log('🎯 filteredStats should be available in CommanderPageShell');
-    //  console.groupEnd();
-    }
-  }, [data, commander, hasNext, isLoadingNext]);
+  
+  const entryCards = useMemo(() => 
+    data.entries.edges.map(({node}) => (
+      <EntryCard key={node.id} entry={node} />
+    )),
+    [data.entries.edges]
+  );
+
+  
+  const shellPreferences = useMemo(() => ({
+    maxStanding: preferences?.maxStanding || null,
+    minEventSize: preferences?.minEventSize || null,
+    sortBy: preferences?.sortBy || DEFAULT_PREFERENCES.sortBy,
+    timePeriod: preferences?.timePeriod || DEFAULT_PREFERENCES.timePeriod,
+  }), [preferences]);
 
   return (
     <CommanderPageShell
       commander={commander}
-      maxStanding={preferences?.maxStanding || null}
-      minEventSize={preferences?.minEventSize || null}
-      sortBy={preferences?.sortBy || 'TOP'}
-      timePeriod={preferences?.timePeriod || 'ONE_YEAR'}
+      {...shellPreferences}
       updatePreference={updatePreference}
       preferences={preferences}
-      dynamicStatsFromData={data.filteredStats} // Now this should exist
+      dynamicStatsFromData={data.filteredStats}
     >
       <div className="mx-auto grid w-full max-w-(--breakpoint-xl) grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
-        {data.entries.edges.map(({node}) => (
-          <EntryCard key={node.id} entry={node} />
-        ))}
+        {entryCards}
       </div>
 
       <LoadMoreButton
