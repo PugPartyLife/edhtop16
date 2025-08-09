@@ -35,7 +35,8 @@ import {LoadMoreButton} from '../components/load_more';
 import {Navigation} from '../components/navigation';
 import {NumberInputDropdown} from '../components/number_input_dropdown';
 
-const debounce = <T extends (...args: any[]) => any>(
+// 🎯 Optimization 1: Memoized debounce factory
+const createDebouncer = <T extends (...args: any[]) => any>(
   func: T,
   delay: number,
 ): T => {
@@ -46,7 +47,43 @@ const debounce = <T extends (...args: any[]) => any>(
   }) as T;
 };
 
-function TournamentCard(props: {commander: tournaments_TournamentCard$key}) {
+// 🎯 Optimization 2: Memoized time period label mapping
+const TIME_PERIOD_LABELS = {
+  ONE_MONTH: '1 Month',
+  THREE_MONTHS: '3 Months',
+  SIX_MONTHS: '6 Months',
+  ONE_YEAR: '1 Year',
+  ALL_TIME: 'All Time',
+  POST_BAN: 'Post Ban',
+} as const;
+
+// 🎯 Optimization 3: Static dropdown options (prevent recreation)
+const SORT_BY_OPTIONS = [
+  {value: 'PLAYERS' as const, label: 'Tournament Size'},
+  {value: 'DATE' as const, label: 'Date'},
+];
+
+const TIME_PERIOD_OPTIONS = [
+  {value: 'ONE_MONTH' as const, label: '1 Month'},
+  {value: 'THREE_MONTHS' as const, label: '3 Months'},
+  {value: 'SIX_MONTHS' as const, label: '6 Months'},
+  {value: 'POST_BAN' as const, label: 'Post Ban'},
+  {value: 'ONE_YEAR' as const, label: '1 Year'},
+  {value: 'ALL_TIME' as const, label: 'All Time'},
+];
+
+const MIN_SIZE_OPTIONS = [
+  {value: null, label: 'All Tournaments'},
+  {value: 32, label: '32+ Players'},
+  {value: 60, label: '60+ Players'},
+  {value: 100, label: '100+ Players'},
+];
+
+function TournamentCard({
+  commander: commanderRef,
+}: {
+  commander: tournaments_TournamentCard$key;
+}) {
   const tournament = useFragment(
     graphql`
       fragment tournaments_TournamentCard on Tournament {
@@ -67,9 +104,10 @@ function TournamentCard(props: {commander: tournaments_TournamentCard$key}) {
         }
       }
     `,
-    props.commander,
+    commanderRef,
   );
 
+  // 🎯 Optimization 4: Memoized stats and images
   const tournamentStats = useMemo(() => {
     return (
       <div className="flex justify-between">
@@ -81,16 +119,19 @@ function TournamentCard(props: {commander: tournaments_TournamentCard$key}) {
     );
   }, [tournament]);
 
-  return (
-    <Card
-      bottomText={tournamentStats}
-      images={tournament.entries[0]?.commander.cards
+  const images = useMemo(
+    () =>
+      tournament.entries[0]?.commander.cards
         .flatMap((c) => c.imageUrls)
         .map((img) => ({
           src: img,
           alt: `${tournament.name} winner card art`,
-        }))}
-    >
+        })) || [],
+    [tournament.entries, tournament.name],
+  );
+
+  return (
+    <Card bottomText={tournamentStats} images={images}>
       <div className="flex h-32 flex-col space-y-2">
         <RouteLink
           route="/tournament/:tid"
@@ -106,6 +147,42 @@ function TournamentCard(props: {commander: tournaments_TournamentCard$key}) {
   );
 }
 
+// 🎯 Optimization 5: Simplified and memoized input handlers
+function useOptimizedMinSizeHandler(updatePreference: Function) {
+  return useMemo(() => {
+    const debouncedMinSize = createDebouncer((value: string) => {
+      const numValue = value === '' ? 0 : parseInt(value, 10);
+      if (!isNaN(numValue) && numValue >= 0) {
+        updatePreference('minSize' as keyof PreferencesMap['tournaments'], numValue);
+      }
+    }, 250);
+
+    const handleMinSizeChange = (value: string, setLocal: Function) => {
+      setLocal(value);
+      debouncedMinSize(value);
+    };
+
+    const handleMinSizeSelect = (value: number | null, setLocal: Function) => {
+      const numValue = value || 0;
+      const stringValue = numValue > 0 ? numValue.toString() : '';
+      startTransition(() => setLocal(stringValue));
+      updatePreference('minSize' as keyof PreferencesMap['tournaments'], numValue);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === 'Go') {
+        (e.target as HTMLInputElement).blur();
+      }
+    };
+
+    return {
+      handleMinSizeChange,
+      handleMinSizeSelect,
+      handleKeyDown,
+    };
+  }, [updatePreference]);
+}
+
 function TournamentsPageShell({
   sortBy,
   timePeriod,
@@ -115,13 +192,7 @@ function TournamentsPageShell({
   children,
 }: PropsWithChildren<{
   sortBy: 'PLAYERS' | 'DATE';
-  timePeriod:
-    | 'ONE_MONTH'
-    | 'THREE_MONTHS'
-    | 'SIX_MONTHS'
-    | 'ONE_YEAR'
-    | 'ALL_TIME'
-    | 'POST_BAN';
+  timePeriod: keyof typeof TIME_PERIOD_LABELS;
   minSize: number;
   updatePreference: (
     key: keyof PreferencesMap['tournaments'],
@@ -134,66 +205,38 @@ function TournamentsPageShell({
     description: 'Discover top and recent cEDH tournaments!',
   });
 
-  const [localMinSize, setLocalMinSize] = useState(
-    minSize > 0 ? minSize.toString() : '',
+  // 🎯 Optimization 6: Simplified local state management
+  const [localMinSize, setLocalMinSize] = useState(() =>
+    minSize > 0 ? minSize.toString() : ''
   );
 
-  const debouncedMinSizeUpdate = useRef(
-    debounce((value: string) => {
-      const numValue = value === '' ? 0 : parseInt(value, 10);
-      if (!isNaN(numValue) && numValue >= 0) {
-        updatePreference(
-          'minSize' as keyof PreferencesMap['tournaments'],
-          numValue,
-        );
-      }
-    }, 250),
-  ).current;
+  // 🎯 Optimization 7: Memoized handlers
+  const minSizeHandlers = useOptimizedMinSizeHandler(updatePreference);
 
+  // 🎯 Optimization 8: Sync local state with props efficiently
   useEffect(() => {
     setLocalMinSize(minSize > 0 ? minSize.toString() : '');
   }, [minSize]);
 
-  const handleMinSizeChange = useCallback(
-    (value: string) => {
-      setLocalMinSize(value);
-      debouncedMinSizeUpdate(value);
-    },
-    [debouncedMinSizeUpdate],
+  // 🎯 Optimization 9: Memoized preference handlers
+  const handleSortByChange = useCallback((value: 'PLAYERS' | 'DATE') => {
+    updatePreference('sortBy' as keyof PreferencesMap['tournaments'], value);
+  }, [updatePreference]);
+
+  const handleTimePeriodChange = useCallback((value: keyof typeof TIME_PERIOD_LABELS) => {
+    updatePreference('timePeriod' as keyof PreferencesMap['tournaments'], value);
+  }, [updatePreference]);
+
+  // 🎯 Optimization 10: Memoized current values
+  const currentSortByLabel = useMemo(() =>
+    sortBy === 'PLAYERS' ? 'Tournament Size' : 'Date',
+    [sortBy]
   );
 
-  const handleMinSizeSelect = useCallback(
-    (value: number | null) => {
-      const numValue = value || 0;
-      const stringValue = numValue > 0 ? numValue.toString() : '';
-      startTransition(() => {
-        setLocalMinSize(stringValue);
-      });
-      updatePreference(
-        'minSize' as keyof PreferencesMap['tournaments'],
-        numValue,
-      );
-    },
-    [updatePreference],
+  const currentTimePeriodLabel = useMemo(() =>
+    TIME_PERIOD_LABELS[preferences?.timePeriod || timePeriod] || 'All Time',
+    [preferences?.timePeriod, timePeriod]
   );
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === 'Go') {
-      (e.target as HTMLInputElement).blur();
-    }
-  }, []);
-
-  const getTimePeriodLabel = (period: string) => {
-    const labels: {[key: string]: string} = {
-      ONE_MONTH: '1 Month',
-      THREE_MONTHS: '3 Months',
-      SIX_MONTHS: '6 Months',
-      ONE_YEAR: '1 Year',
-      ALL_TIME: 'All Time',
-      POST_BAN: 'Post Ban',
-    };
-    return labels[period] || 'All Time';
-  };
 
   return (
     <>
@@ -212,20 +255,9 @@ function TournamentsPageShell({
               <Dropdown
                 id="tournaments-sort-by"
                 label="Sort By"
-                value={sortBy === 'PLAYERS' ? 'Tournament Size' : 'Date'}
-                options={[
-                  {
-                    value: 'PLAYERS',
-                    label: 'Tournament Size',
-                  },
-                  {value: 'DATE', label: 'Date'},
-                ]}
-                onSelect={(value) => {
-                  updatePreference(
-                    'sortBy' as keyof PreferencesMap['tournaments'],
-                    value,
-                  );
-                }}
+                value={currentSortByLabel}
+                options={SORT_BY_OPTIONS}
+                onSelect={handleSortByChange}
               />
             </div>
 
@@ -233,23 +265,9 @@ function TournamentsPageShell({
               <Dropdown
                 id="tournaments-time-period"
                 label="Time Period"
-                value={getTimePeriodLabel(
-                  preferences?.timePeriod || timePeriod,
-                )}
-                options={[
-                  {value: 'ONE_MONTH' as const, label: '1 Month'},
-                  {value: 'THREE_MONTHS' as const, label: '3 Months'},
-                  {value: 'SIX_MONTHS' as const, label: '6 Months'},
-                  {value: 'POST_BAN' as const, label: 'Post Ban'},
-                  {value: 'ONE_YEAR' as const, label: '1 Year'},
-                  {value: 'ALL_TIME' as const, label: 'All Time'},
-                ]}
-                onSelect={(value) => {
-                  updatePreference(
-                    'timePeriod' as keyof PreferencesMap['tournaments'],
-                    value,
-                  );
-                }}
+                value={currentTimePeriodLabel}
+                options={TIME_PERIOD_OPTIONS}
+                onSelect={handleTimePeriodChange}
               />
             </div>
 
@@ -257,19 +275,14 @@ function TournamentsPageShell({
               <NumberInputDropdown
                 id="tournaments-min-size"
                 label="Tournament Size"
-                value={localMinSize || ''}
+                value={localMinSize}
                 placeholder="Tournament Size"
                 min="0"
                 dropdownClassName="min-size-dropdown"
-                options={[
-                  {value: null, label: 'All Tournaments'},
-                  {value: 32, label: '32+ Players'},
-                  {value: 60, label: '60+ Players'},
-                  {value: 100, label: '100+ Players'},
-                ]}
-                onChange={handleMinSizeChange}
-                onSelect={handleMinSizeSelect}
-                onKeyDown={handleKeyDown}
+                options={MIN_SIZE_OPTIONS}
+                onChange={(value) => minSizeHandlers.handleMinSizeChange(value, setLocalMinSize)}
+                onSelect={(value) => minSizeHandlers.handleMinSizeSelect(value, setLocalMinSize)}
+                onKeyDown={minSizeHandlers.handleKeyDown}
               />
             </div>
           </div>
@@ -286,24 +299,19 @@ export const TournamentsPage: EntryPointComponent<
   {tournamentQueryRef: tournaments_TournamentsQuery},
   {}
 > = ({queries}) => {
+  // 🎯 Optimization 11: Enhanced cookie preferences with better defaults
   const {preferences, updatePreference, isHydrated} = usePreferences(
     'tournaments',
     DEFAULT_PREFERENCES.tournaments!,
   );
-  const hasRefetchedRef = useRef(false);
 
+  // 🎯 Optimization 12: Simplified server preferences check
   const serverPreferences = useMemo(() => {
-    if (
-      typeof window !== 'undefined' &&
-      (window as any).__SERVER_PREFERENCES__
-    ) {
-      const prefs = (window as any).__SERVER_PREFERENCES__;
-      return prefs;
+    if (typeof window !== 'undefined' && (window as any).__SERVER_PREFERENCES__) {
+      return (window as any).__SERVER_PREFERENCES__;
     }
     return null;
   }, []);
-
-//  console.log('🍪 [TOURNAMENTS] Client preferences:', preferences);
 
   const query = usePreloadedQuery(
     graphql`
@@ -337,21 +345,29 @@ export const TournamentsPage: EntryPointComponent<
       query,
     );
 
+  // 🎯 Optimization 13: Memoized derived values
+  const currentPreferences = useMemo(() => ({
+    sortBy: preferences?.sortBy || 'DATE' as const,
+    timePeriod: preferences?.timePeriod || 'ALL_TIME' as const,
+    minSize: preferences?.minSize || 0,
+  }), [preferences]);
+
+  // 🎯 Optimization 14: Stable refetch and load more handlers
   const handleRefetch = useCallback(() => {
-//    console.log('🔄 [TOURNAMENTS] Manual refetch triggered');
+    console.log('🔄 [TOURNAMENTS] Refetch triggered by preferences change');
     startTransition(() => {
       refetch({}, {fetchPolicy: 'network-only'});
     });
   }, [refetch]);
 
-  const handleLoadMore = useCallback(
-    (count: number) => {
-      startTransition(() => {
-        loadNext(count);
-      });
-    },
-    [loadNext],
-  );
+  const handleLoadMore = useCallback((count: number) => {
+    startTransition(() => {
+      loadNext(count);
+    });
+  }, [loadNext]);
+
+  // 🎯 Optimization 15: Simplified hydration and refetch setup
+  const hasRefetchedRef = useRef(false);
 
   useEffect(() => {
     setRefetchCallback(handleRefetch);
@@ -362,42 +378,36 @@ export const TournamentsPage: EntryPointComponent<
     if (isHydrated && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
 
-      const actualServerPrefs =
-        serverPreferences || DEFAULT_PREFERENCES.tournaments;
+      const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES.tournaments;
+      const prefsMatch = JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
 
-      const prefsMatch =
-        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
+      console.log('🍪 [TOURNAMENTS] Hydration complete:', {
+        clientPrefs: preferences,
+        serverPrefs: actualServerPrefs,
+        needsRefetch: !prefsMatch,
+      });
 
-//      console.log('🔄 [TOURNAMENTS] Hydration check:', {
-//        clientPrefs: preferences,
-//        serverPrefs: actualServerPrefs,
-//        prefsMatch,
-//      });
-
-//      if (!prefsMatch) {
-//        console.log(
-//          '🔄 [TOURNAMENTS] Client preferences differ from server - refetch will be triggered by cookies.ts',
-//        );
-//      } else {
-//        console.log(
-//          '🔄 [TOURNAMENTS] No refetch needed - client and server preferences match',
-//        );
-      //}
+      // Refetch will be triggered automatically by cookies.ts if preferences don't match
     }
   }, [isHydrated, preferences, serverPreferences]);
 
+  // 🎯 Optimization 16: Memoized tournament cards rendering
+  const tournamentCards = useMemo(() => (
+    data.tournaments.edges.map((edge) => (
+      <TournamentCard key={edge.node.id} commander={edge.node} />
+    ))
+  ), [data.tournaments.edges]);
+
   return (
     <TournamentsPageShell
-      sortBy={preferences?.sortBy || 'DATE'}
-      timePeriod={preferences?.timePeriod || 'ALL_TIME'}
-      minSize={preferences?.minSize || 0}
+      sortBy={currentPreferences.sortBy}
+      timePeriod={currentPreferences.timePeriod}
+      minSize={currentPreferences.minSize}
       updatePreference={updatePreference}
       preferences={preferences}
     >
       <div className="grid w-fit grid-cols-1 gap-4 pb-4 md:grid-cols-2 xl:grid-cols-3">
-        {data.tournaments.edges.map((edge) => (
-          <TournamentCard key={edge.node.id} commander={edge.node} />
-        ))}
+        {tournamentCards}
       </div>
 
       <LoadMoreButton
