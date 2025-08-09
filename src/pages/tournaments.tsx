@@ -148,7 +148,7 @@ function TournamentCard({
 }
 
 
-function useOptimizedMinSizeHandler(updatePreference: Function) {
+function useOptimizedMinSizeHandler(updatePreference: (key: keyof PreferencesMap['tournaments'], value: number) => void) {
   return useMemo(() => {
     const debouncedMinSize = createDebouncer((value: string) => {
       const numValue = value === '' ? 0 : parseInt(value, 10);
@@ -157,12 +157,12 @@ function useOptimizedMinSizeHandler(updatePreference: Function) {
       }
     }, 250);
 
-    const handleMinSizeChange = (value: string, setLocal: Function) => {
+    const handleMinSizeChange = (value: string, setLocal: (value: string) => void) => {
       setLocal(value);
       debouncedMinSize(value);
     };
 
-    const handleMinSizeSelect = (value: number | null, setLocal: Function) => {
+    const handleMinSizeSelect = (value: number | null, setLocal: (value: string) => void) => {
       const numValue = value || 0;
       const stringValue = numValue > 0 ? numValue.toString() : '';
       startTransition(() => setLocal(stringValue));

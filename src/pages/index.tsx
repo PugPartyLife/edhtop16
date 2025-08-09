@@ -177,7 +177,7 @@ const TopCommandersCard = React.memo(function TopCommandersCard({
   );
 });
 
-function useOptimizedInputHandlers(updatePreference: Function) {
+function useOptimizedInputHandlers(updatePreference: (key: keyof PreferencesMap['commanders'], value: number | null) => void) {
   return useMemo(() => {
     const debouncedMinEntries = createDebouncer((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
@@ -193,23 +193,23 @@ function useOptimizedInputHandlers(updatePreference: Function) {
       }
     }, 250);
 
-    const handleMinEntriesChange = (value: string, setLocal: Function) => {
+    const handleMinEntriesChange = (value: string, setLocal: (value: string) => void) => {
       setLocal(value);
       debouncedMinEntries(value);
     };
 
-    const handleMinEntriesSelect = (value: number | null, setLocal: Function) => {
+    const handleMinEntriesSelect = (value: number | null, setLocal: (value: string) => void) => {
       const stringValue = value?.toString() || '';
       startTransition(() => setLocal(stringValue));
       updatePreference('minEntries' as keyof PreferencesMap['commanders'], value);
     };
 
-    const handleEventSizeChange = (value: string, setLocal: Function) => {
+    const handleEventSizeChange = (value: string, setLocal: (value: string) => void) => {
       setLocal(value);
       debouncedEventSize(value);
     };
 
-    const handleEventSizeSelect = (value: number | null, setLocal: Function) => {
+    const handleEventSizeSelect = (value: number | null, setLocal: (value: string) => void) => {
       const stringValue = value?.toString() || '';
       startTransition(() => setLocal(stringValue));
       updatePreference('minTournamentSize' as keyof PreferencesMap['commanders'], value);
