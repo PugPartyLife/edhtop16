@@ -209,7 +209,8 @@ Commander.implement({
       },
     }),
 
-    filteredStats: t.field({
+
+  filteredStats: t.field({
       type: CommanderStats,
       args: {
         minEventSize: t.arg.int(),
@@ -298,11 +299,13 @@ Commander.implement({
           conversionRate: 0,
         };
 
+        // Ensure all numeric fields are never null
         const result = {
-          ...stats,
-          metaShare: stats.count / totalEntries,
-          topCutBias: stats.topCutBias ?? 0,
-          conversionRate: stats.conversionRate ?? 0,
+          count: stats.count || 0,
+          topCuts: stats.topCuts || 0, // Fix: ensure topCuts is never null
+          topCutBias: stats.topCutBias || 0,
+          conversionRate: stats.conversionRate || 0,
+          metaShare: (stats.count || 0) / totalEntries,
         };
 
         console.log('📈 Calculated filtered stats:', result);
