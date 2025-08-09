@@ -409,6 +409,7 @@ const TournamentPageShell = memo(function TournamentPageShell({
   );
 });
 
+/** @resource m#tournament_view */
 export const TournamentViewPage: EntryPointComponent<
   {tournamentQueryRef: TID_TournamentQuery},
   {}
