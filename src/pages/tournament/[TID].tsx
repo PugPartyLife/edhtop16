@@ -16,7 +16,6 @@ import {
   useMemo,
   useEffect,
   useRef,
-  startTransition,
   memo,
 } from 'react';
 import {
@@ -39,28 +38,14 @@ import {FirstPartyPromo} from '../../components/promo';
 import {Tab, TabList} from '../../components/tabs';
 import {formatOrdinals, formatPercent} from '../../lib/client/format';
 
-
 const DEFAULT_PREFERENCES = {
   tab: 'entries' as const,
   commander: null,
 } as const;
 
-
-const createDebouncedFunction = <T extends (...args: any[]) => any>(
-  func: T,
-  delay: number,
-): T => {
-  let timeoutId: NodeJS.Timeout;
-  return ((...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
-  }) as T;
-};
-
-
 const EntryCard = memo(function EntryCard({
   highlightFirst = true,
-  ...props
+  entry: entryProp,
 }: {
   highlightFirst?: boolean;
   entry: TID_EntryCard$key;
@@ -73,12 +58,10 @@ const EntryCard = memo(function EntryCard({
         losses
         draws
         decklist
-
         player {
           name
           isKnownCheater
         }
-
         commander {
           name
           breakdownUrl
@@ -88,18 +71,14 @@ const EntryCard = memo(function EntryCard({
         }
       }
     `,
-    props.entry,
+    entryProp,
   );
 
   const entryName = useMemo(() => {
     const playerName = entry.player?.name ?? 'Unknown Player';
-    if (entry.standing === 1) {
-      return `🥇 ${playerName}`;
-    } else if (entry.standing === 2) {
-      return `🥈 ${playerName}`;
-    } else if (entry.standing === 3) {
-      return `🥉 ${playerName}`;
-    }
+    if (entry.standing === 1) return `🥇 ${playerName}`;
+    if (entry.standing === 2) return `🥈 ${playerName}`;
+    if (entry.standing === 3) return `🥉 ${playerName}`;
     return playerName;
   }, [entry.player?.name, entry.standing]);
 
@@ -150,6 +129,7 @@ const EntryCard = memo(function EntryCard({
           <a
             href={entry.decklist}
             target="_blank"
+            rel="noopener noreferrer"
             className="line-clamp-2 text-xl font-bold underline decoration-transparent transition-colors hover:decoration-inherit"
           >
             {entryNameNode}
@@ -169,10 +149,9 @@ const EntryCard = memo(function EntryCard({
   );
 });
 
-
 const BreakdownGroupCard = memo(function BreakdownGroupCard({
   onClickGroup,
-  ...props
+  group: groupProp,
 }: {
   onClickGroup?: (groupName: string) => void;
   group: TID_BreakdownGroupCard$key;
@@ -188,13 +167,12 @@ const BreakdownGroupCard = memo(function BreakdownGroupCard({
             imageUrls
           }
         }
-
         entries
         topCuts
         conversionRate
       }
     `,
-    props.group,
+    groupProp,
   );
 
   const bottomText = useMemo(() => (
@@ -220,10 +198,7 @@ const BreakdownGroupCard = memo(function BreakdownGroupCard({
   }, [onClickGroup, commander.name]);
 
   return (
-    <Card
-      bottomText={bottomText}
-      images={cardImages}
-    >
+    <Card bottomText={bottomText} images={cardImages}>
       <div className="flex h-32 flex-col space-y-2">
         <button
           className="text-left text-xl font-bold underline decoration-transparent transition-colors group-hover:decoration-inherit"
@@ -231,15 +206,17 @@ const BreakdownGroupCard = memo(function BreakdownGroupCard({
         >
           {commander.name}
         </button>
-
         <ColorIdentity identity={commander.colorId} />
       </div>
     </Card>
   );
 });
 
-
-const TournamentBanner = memo(function TournamentBanner(props: {tournament: TID_TournamentBanner$key}) {
+const TournamentBanner = memo(function TournamentBanner({
+  tournament: tournamentProp
+}: {
+  tournament: TID_TournamentBanner$key
+}) {
   const tournament = useFragment(
     graphql`
       fragment TID_TournamentBanner on Tournament {
@@ -247,7 +224,6 @@ const TournamentBanner = memo(function TournamentBanner(props: {tournament: TID_
         size
         tournamentDate
         bracketUrl
-
         winner: entries(maxStanding: 1) {
           commander {
             cards {
@@ -257,14 +233,13 @@ const TournamentBanner = memo(function TournamentBanner(props: {tournament: TID_
         }
       }
     `,
-    props.tournament,
+    tournamentProp,
   );
 
   const bracketUrl = useMemo(() => {
     try {
-      if (!tournament.bracketUrl) return null;
-      return new URL(tournament.bracketUrl);
-    } catch (e) {
+      return tournament.bracketUrl ? new URL(tournament.bracketUrl) : null;
+    } catch {
       return null;
     }
   }, [tournament.bracketUrl]);
@@ -274,10 +249,10 @@ const TournamentBanner = memo(function TournamentBanner(props: {tournament: TID_
     [tournament.tournamentDate]
   );
 
-  const winnerImages = useMemo(() => {
-    if (!tournament.winner[0]) return [];
-    return tournament.winner[0].commander.cards.flatMap((c) => c.imageUrls);
-  }, [tournament.winner]);
+  const winnerImages = useMemo(() => 
+    tournament.winner[0]?.commander.cards.flatMap((c) => c.imageUrls) || [],
+    [tournament.winner]
+  );
 
   const hasWinner = tournament.winner[0] != null;
 
@@ -305,7 +280,7 @@ const TournamentBanner = memo(function TournamentBanner(props: {tournament: TID_
             <a
               href={bracketUrl.href}
               target="_blank"
-              rel="noopener norefferer"
+              rel="noopener noreferrer"
               className="text-white underline"
             >
               View Bracket <ArrowRightIcon className="inline h-3 w-3" />
@@ -325,7 +300,6 @@ const TournamentBanner = memo(function TournamentBanner(props: {tournament: TID_
   );
 });
 
-
 function useTournamentMeta(tournamentFromProps: TID_TournamentMeta$key) {
   const tournament = useFragment(
     graphql`
@@ -342,13 +316,12 @@ function useTournamentMeta(tournamentFromProps: TID_TournamentMeta$key) {
   });
 }
 
-
 const TournamentPageShell = memo(function TournamentPageShell({
   tab,
   commanderName,
   updatePreference,
+  tournament: tournamentProp,
   children,
-  ...props
 }: PropsWithChildren<{
   tab: string;
   commanderName?: string | null;
@@ -364,13 +337,12 @@ const TournamentPageShell = memo(function TournamentPageShell({
         TID
         ...TID_TournamentBanner
         ...TID_TournamentMeta
-
         promo {
           ...promo_EmbededPromo
         }
       }
     `,
-    props.tournament,
+    tournamentProp,
   );
 
   useTournamentMeta(tournament);
@@ -406,15 +378,9 @@ const TournamentPageShell = memo(function TournamentPageShell({
         <Tab id="entries" selected={tab === 'entries'} onClick={setSelectedTab}>
           Standings
         </Tab>
-
-        <Tab
-          id="breakdown"
-          selected={tab === 'breakdown'}
-          onClick={setSelectedTab}
-        >
+        <Tab id="breakdown" selected={tab === 'breakdown'} onClick={setSelectedTab}>
           Metagame Breakdown
         </Tab>
-
         {showCommanderTab && (
           <Tab id="commander" selected={tab === 'commander'}>
             {commanderName}
@@ -427,7 +393,6 @@ const TournamentPageShell = memo(function TournamentPageShell({
   );
 });
 
-/** @resource m#tournament_view */
 export const TournamentViewPage: EntryPointComponent<
   {tournamentQueryRef: TID_TournamentQuery},
   {}
@@ -438,41 +403,21 @@ export const TournamentViewPage: EntryPointComponent<
   );
   const hasRefetchedRef = useRef(false);
 
-  
-  const serverPreferences = useMemo(() => {
-    if (
-      typeof window !== 'undefined' &&
-      (window as any).__SERVER_PREFERENCES__
-    ) {
-      return (window as any).__SERVER_PREFERENCES__;
-    }
-    return null;
-  }, []);
-
-  
   const handleRefetch = useCallback(() => {
-    
+    // No longer needed since we always fetch all data
   }, []);
 
-  
   useEffect(() => {
     setRefetchCallback(handleRefetch);
     return clearRefetchCallback;
   }, [handleRefetch]);
 
-  
   useEffect(() => {
     if (isHydrated && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
-
-      const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES;
-      const prefsMatch = JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
-
-      if (!prefsMatch) {
-        
-      }
+      // No additional logic needed since we always fetch all data
     }
-  }, [isHydrated, preferences, serverPreferences]);
+  }, [isHydrated]);
 
   const {tournament} = usePreloadedQuery(
     graphql`
@@ -485,20 +430,16 @@ export const TournamentViewPage: EntryPointComponent<
       ) @preloadable {
         tournament(TID: $TID) {
           ...TID_TournamentPageShell
-
           entries @include(if: $showStandings) {
             id
             ...TID_EntryCard
           }
-
           breakdown @include(if: $showBreakdown) {
             commander {
               id
             }
-
             ...TID_BreakdownGroupCard
           }
-
           breakdownEntries: entries(commander: $commander)
             @include(if: $showBreakdownCommander) {
             id
@@ -510,28 +451,20 @@ export const TournamentViewPage: EntryPointComponent<
     queries.tournamentQueryRef,
   );
 
-  
   const handleCommanderSelect = useCallback((commanderName: string) => {
-    updatePreference(
-      'commander' as keyof PreferencesMap['tournament'],
-      commanderName,
-    );
-    updatePreference(
-      'tab' as keyof PreferencesMap['tournament'],
-      'commander',
-    );
+    updatePreference('commander' as keyof PreferencesMap['tournament'], commanderName);
+    updatePreference('tab' as keyof PreferencesMap['tournament'], 'commander');
   }, [updatePreference]);
 
-  
   const currentTabFromQuery = useMemo(() => {
-    if (queries.tournamentQueryRef.variables.showBreakdown) return 'breakdown';
-    if (queries.tournamentQueryRef.variables.showBreakdownCommander) return 'commander';
+    const vars = queries.tournamentQueryRef.variables;
+    if (vars.showBreakdown) return 'breakdown';
+    if (vars.showBreakdownCommander) return 'commander';
     return 'entries';
   }, [queries.tournamentQueryRef.variables]);
 
   const commanderFromQuery = queries.tournamentQueryRef.variables.commander;
 
-  
   const standingsEntries = useMemo(() => 
     tournament.entries?.map((entry) => (
       <EntryCard key={entry.id} entry={entry} />
@@ -557,7 +490,6 @@ export const TournamentViewPage: EntryPointComponent<
     [tournament.breakdownEntries]
   );
 
-  
   const shellProps = useMemo(() => ({
     tournament,
     commanderName: (isHydrated ? preferences?.commander : commanderFromQuery) || null,
@@ -565,29 +497,15 @@ export const TournamentViewPage: EntryPointComponent<
     updatePreference,
   }), [tournament, isHydrated, preferences, commanderFromQuery, currentTabFromQuery, updatePreference]);
 
-  
   const currentContent = useMemo(() => {
-    const currentTab = preferences?.tab || 'entries';
+    const currentTab = isHydrated ? (preferences?.tab || 'entries') : currentTabFromQuery;
     
-    if (currentTab === 'entries') return standingsEntries;
-    if (currentTab === 'breakdown') return breakdownCards;
-    if (currentTab === 'commander') return commanderEntries;
-    
-    return [];
-  }, [preferences?.tab, standingsEntries, breakdownCards, commanderEntries]);
-
-  if (!isHydrated) {
-    return (
-      <TournamentPageShell {...shellProps}>
-        <div className="mx-auto grid w-full max-w-(--breakpoint-xl) grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
-          {queries.tournamentQueryRef.variables.showStandings && standingsEntries}
-          {queries.tournamentQueryRef.variables.showBreakdown && breakdownCards}
-          {queries.tournamentQueryRef.variables.showBreakdownCommander && commanderEntries}
-        </div>
-        <Footer />
-      </TournamentPageShell>
-    );
-  }
+    switch (currentTab) {
+      case 'breakdown': return breakdownCards;
+      case 'commander': return commanderEntries;
+      default: return standingsEntries;
+    }
+  }, [isHydrated, preferences?.tab, currentTabFromQuery, standingsEntries, breakdownCards, commanderEntries]);
 
   return (
     <TournamentPageShell {...shellProps}>
