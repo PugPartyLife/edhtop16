@@ -1,9 +1,7 @@
 import {AllTournamentsQuery} from '#genfiles/queries/AllTournamentsQuery.graphql';
 import {tournaments_TournamentCard$key} from '#genfiles/queries/tournaments_TournamentCard.graphql';
 import {tournaments_Tournaments$key} from '#genfiles/queries/tournaments_Tournaments.graphql';
-import {
-  tournaments_TournamentsQuery,
-} from '#genfiles/queries/tournaments_TournamentsQuery.graphql';
+import {tournaments_TournamentsQuery} from '#genfiles/queries/tournaments_TournamentsQuery.graphql';
 import {RouteLink} from '#genfiles/river/router';
 import {useSeoMeta} from '@unhead/react';
 import {format} from 'date-fns';
@@ -117,7 +115,13 @@ function TournamentsPageShell({
   children,
 }: PropsWithChildren<{
   sortBy: 'PLAYERS' | 'DATE';
-  timePeriod: 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'ALL_TIME' | 'POST_BAN';
+  timePeriod:
+    | 'ONE_MONTH'
+    | 'THREE_MONTHS'
+    | 'SIX_MONTHS'
+    | 'ONE_YEAR'
+    | 'ALL_TIME'
+    | 'POST_BAN';
   minSize: number;
   updatePreference: (
     key: keyof PreferencesMap['tournaments'],
@@ -310,30 +314,28 @@ export const TournamentsPage: EntryPointComponent<
     queries.tournamentQueryRef,
   );
 
-  const {data, loadNext, isLoadingNext, hasNext, refetch} = usePaginationFragment<
-    AllTournamentsQuery,
-    tournaments_Tournaments$key
-  >(
-    graphql`
-      fragment tournaments_Tournaments on Query
-      @argumentDefinitions(
-        cursor: {type: "String"}
-        count: {type: "Int", defaultValue: 100}
-      )
-      @refetchable(queryName: "AllTournamentsQuery") {
-        tournaments(first: $count, after: $cursor)
-          @connection(key: "tournaments__tournaments") {
-          edges {
-            node {
-              id
-              ...tournaments_TournamentCard
+  const {data, loadNext, isLoadingNext, hasNext, refetch} =
+    usePaginationFragment<AllTournamentsQuery, tournaments_Tournaments$key>(
+      graphql`
+        fragment tournaments_Tournaments on Query
+        @argumentDefinitions(
+          cursor: {type: "String"}
+          count: {type: "Int", defaultValue: 100}
+        )
+        @refetchable(queryName: "AllTournamentsQuery") {
+          tournaments(first: $count, after: $cursor)
+            @connection(key: "tournaments__tournaments") {
+            edges {
+              node {
+                id
+                ...tournaments_TournamentCard
+              }
             }
           }
         }
-      }
-    `,
-    query,
-  );
+      `,
+      query,
+    );
 
   const handleRefetch = useCallback(() => {
     console.log('🔄 [TOURNAMENTS] Manual refetch triggered');
@@ -360,7 +362,8 @@ export const TournamentsPage: EntryPointComponent<
     if (isHydrated && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
 
-      const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES.tournaments;
+      const actualServerPrefs =
+        serverPreferences || DEFAULT_PREFERENCES.tournaments;
 
       const prefsMatch =
         JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);

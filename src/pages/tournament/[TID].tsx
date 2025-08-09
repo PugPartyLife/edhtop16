@@ -9,7 +9,15 @@ import ArrowRightIcon from '@heroicons/react/24/solid/ArrowRightIcon';
 import {useSeoMeta} from '@unhead/react';
 import cn from 'classnames';
 import {format} from 'date-fns';
-import {MouseEvent, PropsWithChildren, useCallback, useMemo, useEffect, useRef, startTransition} from 'react';
+import {
+  MouseEvent,
+  PropsWithChildren,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+  startTransition,
+} from 'react';
 import {
   EntryPointComponent,
   useFragment,
@@ -29,7 +37,6 @@ import {Navigation} from '../../components/navigation';
 import {FirstPartyPromo} from '../../components/promo';
 import {Tab, TabList} from '../../components/tabs';
 import {formatOrdinals, formatPercent} from '../../lib/client/format';
-
 
 function debounce<T extends (...args: any[]) => any>(
   func: T,
@@ -330,13 +337,19 @@ function TournamentPageShell({
 
   const setSelectedTab = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
-      const nextKey = (e.target as HTMLButtonElement).id as 'entries' | 'breakdown' | 'commander';
+      const nextKey = (e.target as HTMLButtonElement).id as
+        | 'entries'
+        | 'breakdown'
+        | 'commander';
 
       updatePreference('tab' as keyof PreferencesMap['tournament'], nextKey);
-      
+
       // If switching away from commander tab, clear the commander selection
       if (nextKey !== 'commander') {
-        updatePreference('commander' as keyof PreferencesMap['tournament'], null);
+        updatePreference(
+          'commander' as keyof PreferencesMap['tournament'],
+          null,
+        );
       }
     },
     [updatePreference],
@@ -428,7 +441,9 @@ export const TournamentViewPage: EntryPointComponent<
       // For tab/commander changes, we don't need to refetch since all data is already loaded
       if (!prefsMatch) {
         // Don't automatically refetch for simple tab changes
-        console.log('Preferences differ but not triggering refetch for tab changes');
+        console.log(
+          'Preferences differ but not triggering refetch for tab changes',
+        );
       }
     }
   }, [isHydrated, preferences, serverPreferences, handleRefetch]);
@@ -449,7 +464,9 @@ export const TournamentViewPage: EntryPointComponent<
       // For tab/commander changes, we don't need to refetch since all data is already loaded
       if (!prefsMatch) {
         // Don't automatically refetch for simple tab changes
-        console.log('Preferences differ but not triggering refetch for tab changes');
+        console.log(
+          'Preferences differ but not triggering refetch for tab changes',
+        );
       }
     }
   }, [isHydrated, preferences, serverPreferences, handleRefetch]);
@@ -519,8 +536,14 @@ export const TournamentViewPage: EntryPointComponent<
                 key={group.commander.id}
                 group={group}
                 onClickGroup={(commanderName) => {
-                  updatePreference('commander' as keyof PreferencesMap['tournament'], commanderName);
-                  updatePreference('tab' as keyof PreferencesMap['tournament'], 'commander');
+                  updatePreference(
+                    'commander' as keyof PreferencesMap['tournament'],
+                    commanderName,
+                  );
+                  updatePreference(
+                    'tab' as keyof PreferencesMap['tournament'],
+                    'commander',
+                  );
                 }}
               />
             ))}
@@ -558,8 +581,14 @@ export const TournamentViewPage: EntryPointComponent<
               key={group.commander.id}
               group={group}
               onClickGroup={(commanderName) => {
-                updatePreference('commander' as keyof PreferencesMap['tournament'], commanderName);
-                updatePreference('tab' as keyof PreferencesMap['tournament'], 'commander');
+                updatePreference(
+                  'commander' as keyof PreferencesMap['tournament'],
+                  commanderName,
+                );
+                updatePreference(
+                  'tab' as keyof PreferencesMap['tournament'],
+                  'commander',
+                );
               }}
             />
           ))}

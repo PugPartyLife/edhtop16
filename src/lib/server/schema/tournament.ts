@@ -260,14 +260,18 @@ builder.queryField('tournaments', (t) =>
         // Apply timePeriod filter from preferences (takes precedence over args.filters)
         const timePeriod = preferences.timePeriod || args.filters?.timePeriod;
         if (timePeriod && timePeriod !== 'ALL_TIME') {
-          const minDate = args.filters?.minDate 
+          const minDate = args.filters?.minDate
             ? new Date(args.filters.minDate)
             : minDateFromTimePeriod(timePeriod);
-          
+
           query = query.where('tournamentDate', '>=', minDate.toISOString());
         } else if (args.filters?.minDate) {
           // Fallback to legacy minDate if no timePeriod preference
-          query = query.where('tournamentDate', '>=', new Date(args.filters.minDate).toISOString());
+          query = query.where(
+            'tournamentDate',
+            '>=',
+            new Date(args.filters.minDate).toISOString(),
+          );
         }
 
         // Apply maxDate filter (legacy support)

@@ -181,8 +181,11 @@ function CommanderBanner(props: {
   console.log('📊 Fragment executed at:', new Date().toISOString());
   console.log('📈 Commander stats from GraphQL:', commander.stats);
   console.log('🔄 Dynamic stats from props:', props.dynamicStats);
-  console.log('🎲 Stats source:', props.dynamicStats ? 'Dynamic (props)' : 'Static (GraphQL)');
-  
+  console.log(
+    '🎲 Stats source:',
+    props.dynamicStats ? 'Dynamic (props)' : 'Static (GraphQL)',
+  );
+
   // Log when stats change
   useEffect(() => {
     const stats = commander.stats || props.dynamicStats;
@@ -190,13 +193,13 @@ function CommanderBanner(props: {
       timestamp: new Date().toISOString(),
       source: props.dynamicStats ? 'Dynamic' : 'GraphQL',
       stats: stats,
-      commander: commander.name
+      commander: commander.name,
     });
   }, [props.dynamicStats, commander.stats, commander.name]);
 
   // Use dynamic stats if provided, otherwise fall back to static stats
   const stats = props.dynamicStats || commander.stats;
-  
+
   console.log('✅ Final stats being used:', stats);
   console.groupEnd();
 
@@ -287,7 +290,8 @@ export function CommanderPageShell({
   timePeriod: TimePeriod;
   updatePreference: (key: keyof PreferencesMap['entry'], value: any) => void;
   preferences: PreferencesMap['entry'];
-  dynamicStatsFromData?: { // Add this type
+  dynamicStatsFromData?: {
+    // Add this type
     count: number;
     metaShare: number;
     conversionRate: number;
@@ -335,15 +339,15 @@ export function CommanderPageShell({
   // Log and use the filtered stats
   console.group('🏠 CommanderPageShell with Filtered Stats');
   console.log('👤 Commander:', commander.name);
-  console.log('🔧 Current filters:', { maxStanding, minEventSize, timePeriod });
+  console.log('🔧 Current filters:', {maxStanding, minEventSize, timePeriod});
   console.log('📊 Filtered stats from GraphQL:', commander.filteredStats);
-  
+
   // Use the filtered stats as dynamic stats
   const dynamicStats = dynamicStatsFromData || commander.filteredStats;
 
   console.group('🏠 CommanderPageShell with Filtered Stats');
   console.log('👤 Commander:', commander.name);
-  console.log('🔧 Current filters:', { maxStanding, minEventSize, timePeriod });
+  console.log('🔧 Current filters:', {maxStanding, minEventSize, timePeriod});
   console.log('📊 Filtered stats from commander:', commander.filteredStats);
   console.log('📊 Filtered stats from data:', dynamicStatsFromData);
   console.log('🎯 Using dynamic stats:', dynamicStats);
@@ -403,10 +407,7 @@ export function CommanderPageShell({
   return (
     <>
       <Navigation />
-      <CommanderBanner 
-        commander={commander} 
-        dynamicStats={dynamicStats} 
-      />
+      <CommanderBanner commander={commander} dynamicStats={dynamicStats} />
       {commander.promo && <FirstPartyPromo promo={commander.promo} />}
 
       <div className="mx-auto flex flex-wrap justify-center gap-x-4 gap-y-4 lg:flex-nowrap">
@@ -554,16 +555,18 @@ export const CommanderPage: EntryPointComponent<
       ) @preloadable {
         commander(name: $commander) {
           name
-          ...Commander_CommanderPageShell @arguments(
-            minEventSize: $minEventSize
-            maxStanding: $maxStanding
-            timePeriod: $timePeriod
-          )
-          ...Commander_entries @arguments(
-            minEventSize: $minEventSize
-            maxStanding: $maxStanding
-            timePeriod: $timePeriod
-          )
+          ...Commander_CommanderPageShell
+            @arguments(
+              minEventSize: $minEventSize
+              maxStanding: $maxStanding
+              timePeriod: $timePeriod
+            )
+          ...Commander_entries
+            @arguments(
+              minEventSize: $minEventSize
+              maxStanding: $maxStanding
+              timePeriod: $timePeriod
+            )
         }
       }
     `,
@@ -594,7 +597,7 @@ export const CommanderPage: EntryPointComponent<
             metaShare
             topCutBias
           }
-          
+
           entries(
             first: $count
             after: $cursor

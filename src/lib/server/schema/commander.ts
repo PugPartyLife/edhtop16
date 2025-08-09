@@ -209,12 +209,11 @@ Commander.implement({
       },
     }),
 
-
-  filteredStats: t.field({
+    filteredStats: t.field({
       type: CommanderStats,
       args: {
         minEventSize: t.arg.int(),
-        maxStanding: t.arg.int(), 
+        maxStanding: t.arg.int(),
         timePeriod: t.arg({type: TimePeriod, required: true}),
       },
       resolve: async (parent, args) => {
@@ -239,7 +238,7 @@ Commander.implement({
             .where('Tournament.tournamentDate', '>=', minDate.toISOString())
             .where('Entry.standing', '<=', maxStanding)
             .executeTakeFirstOrThrow(),
-          
+
           // Get stats for this specific commander with filters
           db
             .selectFrom('Entry')
@@ -273,7 +272,11 @@ Commander.implement({
                     eb.fn.sum<number>(
                       eb
                         .case()
-                        .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
+                        .when(
+                          'Entry.standing',
+                          '<=',
+                          eb.ref('Tournament.topCut'),
+                        )
                         .then(1)
                         .else(0)
                         .end(),
@@ -312,7 +315,7 @@ Commander.implement({
         return result;
       },
     }),
-    
+
     entries: t.connection({
       type: Entry,
       args: {
