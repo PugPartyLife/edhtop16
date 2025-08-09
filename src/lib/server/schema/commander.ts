@@ -217,16 +217,16 @@ Commander.implement({
         timePeriod: t.arg({type: TimePeriod, required: true}),
       },
       resolve: async (parent, args) => {
-        console.log('🎯 filteredStats resolver called for:', parent.name);
-        console.log('🔧 Filter args:', args);
+        //console.log('🎯 filteredStats resolver called for:', parent.name);
+        //console.log('🔧 Filter args:', args);
 
         const minEventSize = args.minEventSize ?? 0;
         const maxStanding = args.maxStanding ?? Number.MAX_SAFE_INTEGER;
         const minDate = minDateFromTimePeriod(args.timePeriod);
 
-        console.log('📅 Date range from:', minDate.toISOString());
-        console.log('📊 Event size >= :', minEventSize);
-        console.log('🏆 Standing <= :', maxStanding);
+        //console.log('📅 Date range from:', minDate.toISOString());
+        //console.log('📊 Event size >= :', minEventSize);
+        //console.log('🏆 Standing <= :', maxStanding);
 
         // Get total entries for meta share calculation
         const [entriesQuery, statsQuery] = await Promise.all([
@@ -311,7 +311,7 @@ Commander.implement({
           metaShare: (stats.count || 0) / totalEntries,
         };
 
-        console.log('📈 Calculated filtered stats:', result);
+        //console.log('📈 Calculated filtered stats:', result);
         return result;
       },
     }),
@@ -499,21 +499,21 @@ builder.queryField('commanders', (t) =>
 
       const cached = queryCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        console.log('⚡ Using cached commanders query result');
+        //console.log('⚡ Using cached commanders query result');
         return cached.data;
       }
 
-      console.log('🔍 Executing fresh commanders query');
-      console.log('⚙️ Commander resolver - final values:', {
-        sortBy,
-        timePeriod,
-        minEntries,
-        minTournamentSize,
-        colorId,
-        fromArgs: {sortBy: args.sortBy, timePeriod: args.timePeriod},
-        fromContext: context.preferences.commanders,
-        finalUsed: {sortBy, timePeriod, minEntries, minTournamentSize, colorId},
-      });
+//      console.log('🔍 Executing fresh commanders query');
+//      console.log('⚙️ Commander resolver - final values:', {
+//        sortBy,
+//        timePeriod,
+//        minEntries,
+//        minTournamentSize,
+//        colorId,
+//        fromArgs: {sortBy: args.sortBy, timePeriod: args.timePeriod},
+//        fromContext: context.preferences.commanders,
+//        finalUsed: {sortBy, timePeriod, minEntries, minTournamentSize, colorId},
+//      });
 
       const result = await resolveCursorConnection(
         {args, toCursor: (parent) => `${parent.id}`},

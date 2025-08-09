@@ -237,7 +237,7 @@ builder.queryField('tournaments', (t) =>
         minSize: 0,
       };
 
-      console.log('🔧 [SERVER] Tournaments preferences received:', preferences);
+      //console.log('🔧 [SERVER] Tournaments preferences received:', preferences);
 
       return resolveOffsetConnection({args}, ({limit, offset}) => {
         let query = db.selectFrom('Tournament').selectAll();
@@ -288,12 +288,12 @@ builder.queryField('tournaments', (t) =>
           query = query.orderBy(['tournamentDate desc', 'size desc']);
         }
 
-        console.log('🔧 [SERVER] Applied filters:', {
-          minSize,
-          timePeriod,
-          sortBy,
-          hasSearch: !!args.search,
-        });
+        //console.log('🔧 [SERVER] Applied filters:', {
+//          minSize,
+//          timePeriod,
+//          sortBy,
+//          hasSearch: !!args.search,
+//        });
 
         return query.limit(limit).offset(offset).execute();
       });

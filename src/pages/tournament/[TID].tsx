@@ -417,7 +417,7 @@ export const TournamentViewPage: EntryPointComponent<
     // For tournament pages, we don't need to refetch when switching tabs
     // since all the data (entries, breakdown, breakdownEntries) is already loaded
     // We're just showing/hiding different parts of the same data
-    console.log('Refetch triggered but skipping for tournament tab changes');
+    //console.log('Refetch triggered but skipping for tournament tab changes');
   }, []);
 
   useEffect(() => {
@@ -441,9 +441,9 @@ export const TournamentViewPage: EntryPointComponent<
       // For tab/commander changes, we don't need to refetch since all data is already loaded
       if (!prefsMatch) {
         // Don't automatically refetch for simple tab changes
-        console.log(
-          'Preferences differ but not triggering refetch for tab changes',
-        );
+        //console.log(
+        //  'Preferences differ but not triggering refetch for tab changes',
+        //);
       }
     }
   }, [isHydrated, preferences, serverPreferences, handleRefetch]);
@@ -464,9 +464,9 @@ export const TournamentViewPage: EntryPointComponent<
       // For tab/commander changes, we don't need to refetch since all data is already loaded
       if (!prefsMatch) {
         // Don't automatically refetch for simple tab changes
-        console.log(
-          'Preferences differ but not triggering refetch for tab changes',
-        );
+        //console.log(
+        //  'Preferences differ but not triggering refetch for tab changes',
+        //);
       }
     }
   }, [isHydrated, preferences, serverPreferences, handleRefetch]);

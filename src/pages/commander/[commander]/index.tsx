@@ -177,31 +177,31 @@ function CommanderBanner(props: {
   );
 
   // Enhanced logging for CommanderBanner query execution and stats
-  console.group(`🎯 CommanderBanner - ${commander.name}`);
-  console.log('📊 Fragment executed at:', new Date().toISOString());
-  console.log('📈 Commander stats from GraphQL:', commander.stats);
-  console.log('🔄 Dynamic stats from props:', props.dynamicStats);
-  console.log(
-    '🎲 Stats source:',
-    props.dynamicStats ? 'Dynamic (props)' : 'Static (GraphQL)',
-  );
+//  console.group(`🎯 CommanderBanner - ${commander.name}`);
+//  console.log('📊 Fragment executed at:', new Date().toISOString());
+//  console.log('📈 Commander stats from GraphQL:', commander.stats);
+//  console.log('🔄 Dynamic stats from props:', props.dynamicStats);
+//  console.log(
+//    '🎲 Stats source:',
+//    props.dynamicStats ? 'Dynamic (props)' : 'Static (GraphQL)',
+//  );
 
   // Log when stats change
   useEffect(() => {
     const stats = commander.stats || props.dynamicStats;
-    console.log('📋 Stats updated:', {
-      timestamp: new Date().toISOString(),
-      source: props.dynamicStats ? 'Dynamic' : 'GraphQL',
-      stats: stats,
-      commander: commander.name,
-    });
+    //console.log('📋 Stats updated:', {
+    //  timestamp: new Date().toISOString(),
+    //  source: props.dynamicStats ? 'Dynamic' : 'GraphQL',
+    //  stats: stats,
+    //  commander: commander.name,
+    //});
   }, [props.dynamicStats, commander.stats, commander.name]);
 
   // Use dynamic stats if provided, otherwise fall back to static stats
   const stats = props.dynamicStats || commander.stats;
 
-  console.log('✅ Final stats being used:', stats);
-  console.groupEnd();
+  //console.log('✅ Final stats being used:', stats);
+  //console.groupEnd();
 
   return (
     <div className="h-64 w-full bg-black/60 md:h-80">
@@ -337,21 +337,21 @@ export function CommanderPageShell({
   useCommanderMeta(commander);
 
   // Log and use the filtered stats
-  console.group('🏠 CommanderPageShell with Filtered Stats');
-  console.log('👤 Commander:', commander.name);
-  console.log('🔧 Current filters:', {maxStanding, minEventSize, timePeriod});
-  console.log('📊 Filtered stats from GraphQL:', commander.filteredStats);
+  //console.group('🏠 CommanderPageShell with Filtered Stats');
+  //console.log('👤 Commander:', commander.name);
+  //console.log('🔧 Current filters:', {maxStanding, minEventSize, timePeriod});
+  //console.log('📊 Filtered stats from GraphQL:', commander.filteredStats);
 
   // Use the filtered stats as dynamic stats
   const dynamicStats = dynamicStatsFromData || commander.filteredStats;
 
-  console.group('🏠 CommanderPageShell with Filtered Stats');
-  console.log('👤 Commander:', commander.name);
-  console.log('🔧 Current filters:', {maxStanding, minEventSize, timePeriod});
-  console.log('📊 Filtered stats from commander:', commander.filteredStats);
-  console.log('📊 Filtered stats from data:', dynamicStatsFromData);
-  console.log('🎯 Using dynamic stats:', dynamicStats);
-  console.groupEnd();
+  //console.group('🏠 CommanderPageShell with Filtered Stats');
+  //console.log('👤 Commander:', commander.name);
+  //console.log('🔧 Current filters:', {maxStanding, minEventSize, timePeriod});
+  //console.log('📊 Filtered stats from commander:', commander.filteredStats);
+  //console.log('📊 Filtered stats from data:', dynamicStatsFromData);
+  //console.log('🎯 Using dynamic stats:', dynamicStats);
+  //console.groupEnd();
 
   const [localEventSize, setLocalEventSize] = useState(
     minEventSize?.toString() || '',
@@ -620,7 +620,7 @@ export const CommanderPage: EntryPointComponent<
       commander,
     );
 
-  console.log('📋 Current data object:', data);
+  //console.log('📋 Current data object:', data);
 
   const handleRefetch = useCallback(() => {
     const refetchParams = {
@@ -630,12 +630,12 @@ export const CommanderPage: EntryPointComponent<
       maxStanding: preferences?.maxStanding || undefined,
     };
 
-    console.group('🔄 CommanderPage Refetch Initiated');
-    console.log('⏰ Timestamp:', new Date().toISOString());
-    console.log('📋 Refetch Parameters:', refetchParams);
-    console.log('👤 Commander:', commander.name || 'Unknown');
-    console.log('🎯 This will trigger filteredStats resolver on backend');
-    console.groupEnd();
+   // console.group('🔄 CommanderPage Refetch Initiated');
+   // console.log('⏰ Timestamp:', new Date().toISOString());
+   // console.log('📋 Refetch Parameters:', refetchParams);
+   // console.log('👤 Commander:', commander.name || 'Unknown');
+   // console.log('🎯 This will trigger filteredStats resolver on backend');
+   // console.groupEnd();
 
     startTransition(() => {
       refetch(refetchParams, {fetchPolicy: 'network-only'});
@@ -672,7 +672,7 @@ export const CommanderPage: EntryPointComponent<
 
       // If client preferences differ from server defaults, refetch immediately
       if (!prefsMatch) {
-        console.log('🔄 Client prefs differ from server, triggering refetch');
+        //console.log('🔄 Client prefs differ from server, triggering refetch');
         setTimeout(() => {
           handleRefetch();
         }, 100);
@@ -683,14 +683,14 @@ export const CommanderPage: EntryPointComponent<
   // Log when query data updates
   useEffect(() => {
     if (data && commander) {
-      console.group('📊 CommanderPage Query Data Updated');
-      console.log('⏰ Timestamp:', new Date().toISOString());
-      console.log('👤 Commander:', commander.name);
-      console.log('📈 Entries count:', data.entries.edges.length);
-      console.log('🔗 Has more pages:', hasNext);
-      console.log('⚡ Is loading:', isLoadingNext);
-      console.log('🎯 filteredStats should be available in CommanderPageShell');
-      console.groupEnd();
+    //  console.group('📊 CommanderPage Query Data Updated');
+    //  console.log('⏰ Timestamp:', new Date().toISOString());
+    //  console.log('👤 Commander:', commander.name);
+    //  console.log('📈 Entries count:', data.entries.edges.length);
+    //  console.log('🔗 Has more pages:', hasNext);
+    //  console.log('⚡ Is loading:', isLoadingNext);
+    //  console.log('🎯 filteredStats should be available in CommanderPageShell');
+    //  console.groupEnd();
     }
   }, [data, commander, hasNext, isLoadingNext]);
 

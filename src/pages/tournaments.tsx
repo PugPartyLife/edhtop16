@@ -303,7 +303,7 @@ export const TournamentsPage: EntryPointComponent<
     return null;
   }, []);
 
-  console.log('🍪 [TOURNAMENTS] Client preferences:', preferences);
+//  console.log('🍪 [TOURNAMENTS] Client preferences:', preferences);
 
   const query = usePreloadedQuery(
     graphql`
@@ -338,7 +338,7 @@ export const TournamentsPage: EntryPointComponent<
     );
 
   const handleRefetch = useCallback(() => {
-    console.log('🔄 [TOURNAMENTS] Manual refetch triggered');
+//    console.log('🔄 [TOURNAMENTS] Manual refetch triggered');
     startTransition(() => {
       refetch({}, {fetchPolicy: 'network-only'});
     });
@@ -368,21 +368,21 @@ export const TournamentsPage: EntryPointComponent<
       const prefsMatch =
         JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
 
-      console.log('🔄 [TOURNAMENTS] Hydration check:', {
-        clientPrefs: preferences,
-        serverPrefs: actualServerPrefs,
-        prefsMatch,
-      });
+//      console.log('🔄 [TOURNAMENTS] Hydration check:', {
+//        clientPrefs: preferences,
+//        serverPrefs: actualServerPrefs,
+//        prefsMatch,
+//      });
 
-      if (!prefsMatch) {
-        console.log(
-          '🔄 [TOURNAMENTS] Client preferences differ from server - refetch will be triggered by cookies.ts',
-        );
-      } else {
-        console.log(
-          '🔄 [TOURNAMENTS] No refetch needed - client and server preferences match',
-        );
-      }
+//      if (!prefsMatch) {
+//        console.log(
+//          '🔄 [TOURNAMENTS] Client preferences differ from server - refetch will be triggered by cookies.ts',
+//        );
+//      } else {
+//        console.log(
+//          '🔄 [TOURNAMENTS] No refetch needed - client and server preferences match',
+//        );
+      //}
     }
   }, [isHydrated, preferences, serverPreferences]);
 
