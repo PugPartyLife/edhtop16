@@ -45,7 +45,7 @@ const isGenerationMode =
       arg.includes('generate') ||
       arg.includes('build') ||
       arg.includes('schema'),
-  ) || process.env.npm_lifecycle_event?.includes('generate'); // prevents generate:schema from taking 5 * 60 * 1000ms 
+  ) || process.env.npm_lifecycle_event?.includes('generate'); // prevents generate:schema from taking 5 * 60 * 1000ms
 
 if (!isGenerationMode) {
   setInterval(cleanupCache, 5 * 60 * 1000);
@@ -205,7 +205,7 @@ Commander.implement({
       },
     }),
 
-filteredStats: t.field({
+    filteredStats: t.field({
       type: CommanderStats,
       args: {
         minEventSize: t.arg.int(),
@@ -213,7 +213,6 @@ filteredStats: t.field({
         timePeriod: t.arg({type: TimePeriod, required: true}),
       },
       resolve: async (parent, args, context) => {
-        
         const preferences = context.preferences.entry || {
           sortBy: 'TOP',
           timePeriod: 'ONE_YEAR',
@@ -221,11 +220,16 @@ filteredStats: t.field({
           maxStanding: null,
         };
 
-        console.log('🔧 [SERVER] Commander filteredStats preferences received:', preferences);
+        console.log(
+          '🔧 [SERVER] Commander filteredStats preferences received:',
+          preferences,
+        );
 
-        
         const minEventSize = preferences.minEventSize || args.minEventSize || 0;
-        const maxStanding = preferences.maxStanding || args.maxStanding || Number.MAX_SAFE_INTEGER;
+        const maxStanding =
+          preferences.maxStanding ||
+          args.maxStanding ||
+          Number.MAX_SAFE_INTEGER;
         const timePeriod = preferences.timePeriod || args.timePeriod;
 
         const minDate = minDateFromTimePeriod(timePeriod);

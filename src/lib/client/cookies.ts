@@ -1,7 +1,6 @@
 import {useState, useEffect, useRef, useCallback} from 'react';
 import {updateRelayPreferences} from './relay_client_environment';
 
-
 export interface CommandersPreferences {
   sortBy?: 'CONVERSION' | 'POPULARITY';
   timePeriod?:

@@ -135,11 +135,7 @@ export function useCreateHandler(
       requestPreferencesCache.set(req as any, preferences);
     }
 
-    const env = createServerEnvironment(
-      schema,
-      persistedQueries,
-      preferences,
-    );
+    const env = createServerEnvironment(schema, persistedQueries, preferences);
 
     const RiverApp = await createRiverServerApp(
       {getEnvironment: () => env},

@@ -82,48 +82,55 @@ const EntryCard = memo(function EntryCard({
     return playerName;
   }, [entry.player?.name, entry.standing]);
 
-  const entryNameNode = useMemo(() => (
-    <span className="relative flex items-baseline">
-      {entryName}
-      {entry.player?.isKnownCheater && (
-        <span className="absolute right-0 rounded-full bg-red-600 px-2 py-1 text-xs uppercase">
-          Cheater
-        </span>
-      )}
-    </span>
-  ), [entryName, entry.player?.isKnownCheater]);
-
-  const bottomText = useMemo(() => (
-    <div className="flex">
-      <span className="flex-1">{formatOrdinals(entry.standing)} place</span>
-      <span>
-        Wins: {entry.wins} / Losses: {entry.losses} / Draws: {entry.draws}
+  const entryNameNode = useMemo(
+    () => (
+      <span className="relative flex items-baseline">
+        {entryName}
+        {entry.player?.isKnownCheater && (
+          <span className="absolute right-0 rounded-full bg-red-600 px-2 py-1 text-xs uppercase">
+            Cheater
+          </span>
+        )}
       </span>
-    </div>
-  ), [entry.standing, entry.wins, entry.losses, entry.draws]);
-
-  const cardImages = useMemo(() => 
-    entry.commander.cards
-      .flatMap((c) => c.imageUrls)
-      .map((img) => ({
-        src: img,
-        alt: `${entry.commander.name} art`,
-      })),
-    [entry.commander.cards, entry.commander.name]
+    ),
+    [entryName, entry.player?.isKnownCheater],
   );
 
-  const cardClassName = useMemo(() => cn(
-    'group',
-    highlightFirst &&
-      'md:first:col-span-2 lg:max-w-3xl lg:first:col-span-3 lg:first:w-full lg:first:justify-self-center',
-  ), [highlightFirst]);
+  const bottomText = useMemo(
+    () => (
+      <div className="flex">
+        <span className="flex-1">{formatOrdinals(entry.standing)} place</span>
+        <span>
+          Wins: {entry.wins} / Losses: {entry.losses} / Draws: {entry.draws}
+        </span>
+      </div>
+    ),
+    [entry.standing, entry.wins, entry.losses, entry.draws],
+  );
+
+  const cardImages = useMemo(
+    () =>
+      entry.commander.cards
+        .flatMap((c) => c.imageUrls)
+        .map((img) => ({
+          src: img,
+          alt: `${entry.commander.name} art`,
+        })),
+    [entry.commander.cards, entry.commander.name],
+  );
+
+  const cardClassName = useMemo(
+    () =>
+      cn(
+        'group',
+        highlightFirst &&
+          'md:first:col-span-2 lg:max-w-3xl lg:first:col-span-3 lg:first:w-full lg:first:justify-self-center',
+      ),
+    [highlightFirst],
+  );
 
   return (
-    <Card
-      className={cardClassName}
-      bottomText={bottomText}
-      images={cardImages}
-    >
+    <Card className={cardClassName} bottomText={bottomText} images={cardImages}>
       <div className="flex h-32 flex-col space-y-2 lg:group-first:h-40">
         {entry.decklist ? (
           <a
@@ -175,22 +182,26 @@ const BreakdownGroupCard = memo(function BreakdownGroupCard({
     groupProp,
   );
 
-  const bottomText = useMemo(() => (
-    <div className="flex flex-wrap justify-between gap-1">
-      <span>Top Cuts: {topCuts}</span>
-      <span>Entries: {entries}</span>
-      <span>Conversion: {formatPercent(conversionRate)}</span>
-    </div>
-  ), [topCuts, entries, conversionRate]);
+  const bottomText = useMemo(
+    () => (
+      <div className="flex flex-wrap justify-between gap-1">
+        <span>Top Cuts: {topCuts}</span>
+        <span>Entries: {entries}</span>
+        <span>Conversion: {formatPercent(conversionRate)}</span>
+      </div>
+    ),
+    [topCuts, entries, conversionRate],
+  );
 
-  const cardImages = useMemo(() => 
-    commander.cards
-      .flatMap((c) => c.imageUrls)
-      .map((img) => ({
-        src: img,
-        alt: `${commander.name} art`,
-      })),
-    [commander.cards, commander.name]
+  const cardImages = useMemo(
+    () =>
+      commander.cards
+        .flatMap((c) => c.imageUrls)
+        .map((img) => ({
+          src: img,
+          alt: `${commander.name} art`,
+        })),
+    [commander.cards, commander.name],
   );
 
   const handleClick = useCallback(() => {
@@ -213,9 +224,9 @@ const BreakdownGroupCard = memo(function BreakdownGroupCard({
 });
 
 const TournamentBanner = memo(function TournamentBanner({
-  tournament: tournamentProp
+  tournament: tournamentProp,
 }: {
-  tournament: TID_TournamentBanner$key
+  tournament: TID_TournamentBanner$key;
 }) {
   const tournament = useFragment(
     graphql`
@@ -244,14 +255,15 @@ const TournamentBanner = memo(function TournamentBanner({
     }
   }, [tournament.bracketUrl]);
 
-  const formattedDate = useMemo(() => 
-    format(tournament.tournamentDate, 'MMMM do yyyy'),
-    [tournament.tournamentDate]
+  const formattedDate = useMemo(
+    () => format(tournament.tournamentDate, 'MMMM do yyyy'),
+    [tournament.tournamentDate],
   );
 
-  const winnerImages = useMemo(() => 
-    tournament.winner[0]?.commander.cards.flatMap((c) => c.imageUrls) || [],
-    [tournament.winner]
+  const winnerImages = useMemo(
+    () =>
+      tournament.winner[0]?.commander.cards.flatMap((c) => c.imageUrls) || [],
+    [tournament.winner],
   );
 
   const hasWinner = tournament.winner[0] != null;
@@ -378,7 +390,11 @@ const TournamentPageShell = memo(function TournamentPageShell({
         <Tab id="entries" selected={tab === 'entries'} onClick={setSelectedTab}>
           Standings
         </Tab>
-        <Tab id="breakdown" selected={tab === 'breakdown'} onClick={setSelectedTab}>
+        <Tab
+          id="breakdown"
+          selected={tab === 'breakdown'}
+          onClick={setSelectedTab}
+        >
           Metagame Breakdown
         </Tab>
         {showCommanderTab && (
@@ -451,10 +467,19 @@ export const TournamentViewPage: EntryPointComponent<
     queries.tournamentQueryRef,
   );
 
-  const handleCommanderSelect = useCallback((commanderName: string) => {
-    updatePreference('commander' as keyof PreferencesMap['tournament'], commanderName);
-    updatePreference('tab' as keyof PreferencesMap['tournament'], 'commander');
-  }, [updatePreference]);
+  const handleCommanderSelect = useCallback(
+    (commanderName: string) => {
+      updatePreference(
+        'commander' as keyof PreferencesMap['tournament'],
+        commanderName,
+      );
+      updatePreference(
+        'tab' as keyof PreferencesMap['tournament'],
+        'commander',
+      );
+    },
+    [updatePreference],
+  );
 
   const currentTabFromQuery = useMemo(() => {
     const vars = queries.tournamentQueryRef.variables;
@@ -465,47 +490,73 @@ export const TournamentViewPage: EntryPointComponent<
 
   const commanderFromQuery = queries.tournamentQueryRef.variables.commander;
 
-  const standingsEntries = useMemo(() => 
-    tournament.entries?.map((entry) => (
-      <EntryCard key={entry.id} entry={entry} />
-    )) || [],
-    [tournament.entries]
+  const standingsEntries = useMemo(
+    () =>
+      tournament.entries?.map((entry) => (
+        <EntryCard key={entry.id} entry={entry} />
+      )) || [],
+    [tournament.entries],
   );
 
-  const breakdownCards = useMemo(() => 
-    tournament.breakdown?.map((group) => (
-      <BreakdownGroupCard
-        key={group.commander.id}
-        group={group}
-        onClickGroup={handleCommanderSelect}
-      />
-    )) || [],
-    [tournament.breakdown, handleCommanderSelect]
+  const breakdownCards = useMemo(
+    () =>
+      tournament.breakdown?.map((group) => (
+        <BreakdownGroupCard
+          key={group.commander.id}
+          group={group}
+          onClickGroup={handleCommanderSelect}
+        />
+      )) || [],
+    [tournament.breakdown, handleCommanderSelect],
   );
 
-  const commanderEntries = useMemo(() => 
-    tournament.breakdownEntries?.map((entry) => (
-      <EntryCard key={entry.id} entry={entry} highlightFirst={false} />
-    )) || [],
-    [tournament.breakdownEntries]
+  const commanderEntries = useMemo(
+    () =>
+      tournament.breakdownEntries?.map((entry) => (
+        <EntryCard key={entry.id} entry={entry} highlightFirst={false} />
+      )) || [],
+    [tournament.breakdownEntries],
   );
 
-  const shellProps = useMemo(() => ({
-    tournament,
-    commanderName: (isHydrated ? preferences?.commander : commanderFromQuery) || null,
-    tab: isHydrated ? (preferences?.tab || 'entries') : currentTabFromQuery,
-    updatePreference,
-  }), [tournament, isHydrated, preferences, commanderFromQuery, currentTabFromQuery, updatePreference]);
+  const shellProps = useMemo(
+    () => ({
+      tournament,
+      commanderName:
+        (isHydrated ? preferences?.commander : commanderFromQuery) || null,
+      tab: isHydrated ? preferences?.tab || 'entries' : currentTabFromQuery,
+      updatePreference,
+    }),
+    [
+      tournament,
+      isHydrated,
+      preferences,
+      commanderFromQuery,
+      currentTabFromQuery,
+      updatePreference,
+    ],
+  );
 
   const currentContent = useMemo(() => {
-    const currentTab = isHydrated ? (preferences?.tab || 'entries') : currentTabFromQuery;
-    
+    const currentTab = isHydrated
+      ? preferences?.tab || 'entries'
+      : currentTabFromQuery;
+
     switch (currentTab) {
-      case 'breakdown': return breakdownCards;
-      case 'commander': return commanderEntries;
-      default: return standingsEntries;
+      case 'breakdown':
+        return breakdownCards;
+      case 'commander':
+        return commanderEntries;
+      default:
+        return standingsEntries;
     }
-  }, [isHydrated, preferences?.tab, currentTabFromQuery, standingsEntries, breakdownCards, commanderEntries]);
+  }, [
+    isHydrated,
+    preferences?.tab,
+    currentTabFromQuery,
+    standingsEntries,
+    breakdownCards,
+    commanderEntries,
+  ]);
 
   return (
     <TournamentPageShell {...shellProps}>

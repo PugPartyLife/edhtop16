@@ -177,42 +177,71 @@ const TopCommandersCard = React.memo(function TopCommandersCard({
   );
 });
 
-function useOptimizedInputHandlers(updatePreference: (key: keyof PreferencesMap['commanders'], value: number | null) => void) {
+function useOptimizedInputHandlers(
+  updatePreference: (
+    key: keyof PreferencesMap['commanders'],
+    value: number | null,
+  ) => void,
+) {
   return useMemo(() => {
     const debouncedMinEntries = createDebouncer((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
       if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-        updatePreference('minEntries' as keyof PreferencesMap['commanders'], numValue);
+        updatePreference(
+          'minEntries' as keyof PreferencesMap['commanders'],
+          numValue,
+        );
       }
     }, 250);
 
     const debouncedEventSize = createDebouncer((value: string) => {
       const numValue = value === '' ? null : parseInt(value, 10);
       if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-        updatePreference('minTournamentSize' as keyof PreferencesMap['commanders'], numValue);
+        updatePreference(
+          'minTournamentSize' as keyof PreferencesMap['commanders'],
+          numValue,
+        );
       }
     }, 250);
 
-    const handleMinEntriesChange = (value: string, setLocal: (value: string) => void) => {
+    const handleMinEntriesChange = (
+      value: string,
+      setLocal: (value: string) => void,
+    ) => {
       setLocal(value);
       debouncedMinEntries(value);
     };
 
-    const handleMinEntriesSelect = (value: number | null, setLocal: (value: string) => void) => {
+    const handleMinEntriesSelect = (
+      value: number | null,
+      setLocal: (value: string) => void,
+    ) => {
       const stringValue = value?.toString() || '';
       startTransition(() => setLocal(stringValue));
-      updatePreference('minEntries' as keyof PreferencesMap['commanders'], value);
+      updatePreference(
+        'minEntries' as keyof PreferencesMap['commanders'],
+        value,
+      );
     };
 
-    const handleEventSizeChange = (value: string, setLocal: (value: string) => void) => {
+    const handleEventSizeChange = (
+      value: string,
+      setLocal: (value: string) => void,
+    ) => {
       setLocal(value);
       debouncedEventSize(value);
     };
 
-    const handleEventSizeSelect = (value: number | null, setLocal: (value: string) => void) => {
+    const handleEventSizeSelect = (
+      value: number | null,
+      setLocal: (value: string) => void,
+    ) => {
       const stringValue = value?.toString() || '';
       startTransition(() => setLocal(stringValue));
-      updatePreference('minTournamentSize' as keyof PreferencesMap['commanders'], value);
+      updatePreference(
+        'minTournamentSize' as keyof PreferencesMap['commanders'],
+        value,
+      );
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -248,7 +277,10 @@ function CommandersPageShell({
   sortBy: 'CONVERSION' | 'POPULARITY';
   timePeriod: keyof typeof TIME_PERIOD_LABELS;
   display: 'card' | 'table';
-  updatePreference: (key: keyof PreferencesMap['commanders'], value: any) => void;
+  updatePreference: (
+    key: keyof PreferencesMap['commanders'],
+    value: any,
+  ) => void;
   preferences: PreferencesMap['commanders'];
 }>) {
   useSeoMeta({
@@ -256,11 +288,13 @@ function CommandersPageShell({
     description: 'Discover top performing commanders in cEDH!',
   });
 
-  const [localMinEntries, setLocalMinEntries] = useState(() => 
-    minEntries?.toString() || ''
+  const [localMinEntries, setLocalMinEntries] = useState(
+    () => minEntries?.toString() || '',
   );
   const [localEventSize, setLocalEventSize] = useState(() =>
-    minTournamentSize && minTournamentSize > 0 ? minTournamentSize.toString() : ''
+    minTournamentSize && minTournamentSize > 0
+      ? minTournamentSize.toString()
+      : '',
   );
 
   const inputHandlers = useOptimizedInputHandlers(updatePreference);
@@ -271,34 +305,53 @@ function CommandersPageShell({
 
   useEffect(() => {
     setLocalEventSize(
-      minTournamentSize && minTournamentSize > 0 ? minTournamentSize.toString() : ''
+      minTournamentSize && minTournamentSize > 0
+        ? minTournamentSize.toString()
+        : '',
     );
   }, [minTournamentSize]);
 
   const handleDisplayToggle = useCallback(() => {
-    updatePreference('display' as keyof PreferencesMap['commanders'], display === 'table' ? 'card' : 'table');
+    updatePreference(
+      'display' as keyof PreferencesMap['commanders'],
+      display === 'table' ? 'card' : 'table',
+    );
   }, [updatePreference, display]);
 
-  const handleSortByChange = useCallback((value: 'CONVERSION' | 'POPULARITY') => {
-    updatePreference('sortBy' as keyof PreferencesMap['commanders'], value);
-  }, [updatePreference]);
-
-  const handleTimePeriodChange = useCallback((value: keyof typeof TIME_PERIOD_LABELS) => {
-    updatePreference('timePeriod' as keyof PreferencesMap['commanders'], value);
-  }, [updatePreference]);
-
-  const handleColorChange = useCallback((value: string) => {
-    updatePreference('colorId' as keyof PreferencesMap['commanders'], value);
-  }, [updatePreference]);
-
-  const currentSortByLabel = useMemo(() => 
-    preferences?.sortBy === 'POPULARITY' ? 'Most Popular' : 'Top Performing',
-    [preferences?.sortBy]
+  const handleSortByChange = useCallback(
+    (value: 'CONVERSION' | 'POPULARITY') => {
+      updatePreference('sortBy' as keyof PreferencesMap['commanders'], value);
+    },
+    [updatePreference],
   );
 
-  const currentTimePeriodLabel = useMemo(() => 
-    TIME_PERIOD_LABELS[preferences?.timePeriod || timePeriod] || '1 Month',
-    [preferences?.timePeriod, timePeriod]
+  const handleTimePeriodChange = useCallback(
+    (value: keyof typeof TIME_PERIOD_LABELS) => {
+      updatePreference(
+        'timePeriod' as keyof PreferencesMap['commanders'],
+        value,
+      );
+    },
+    [updatePreference],
+  );
+
+  const handleColorChange = useCallback(
+    (value: string) => {
+      updatePreference('colorId' as keyof PreferencesMap['commanders'], value);
+    },
+    [updatePreference],
+  );
+
+  const currentSortByLabel = useMemo(
+    () =>
+      preferences?.sortBy === 'POPULARITY' ? 'Most Popular' : 'Top Performing',
+    [preferences?.sortBy],
+  );
+
+  const currentTimePeriodLabel = useMemo(
+    () =>
+      TIME_PERIOD_LABELS[preferences?.timePeriod || timePeriod] || '1 Month',
+    [preferences?.timePeriod, timePeriod],
   );
 
   return (
@@ -326,10 +379,7 @@ function CommandersPageShell({
         {/* Filters */}
         <div className="mb-8 flex flex-col items-start space-y-4 lg:flex-row lg:items-end lg:space-y-0">
           <div className="flex-1">
-            <ColorSelection
-              selected={colorId}
-              onChange={handleColorChange}
-            />
+            <ColorSelection selected={colorId} onChange={handleColorChange} />
           </div>
 
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-4 lg:flex-nowrap lg:justify-end">
@@ -360,8 +410,18 @@ function CommandersPageShell({
                 min="1"
                 dropdownClassName="min-entries-dropdown"
                 options={MIN_ENTRIES_OPTIONS}
-                onChange={(value) => inputHandlers.handleMinEntriesChange(value, setLocalMinEntries)}
-                onSelect={(value) => inputHandlers.handleMinEntriesSelect(value, setLocalMinEntries)}
+                onChange={(value) =>
+                  inputHandlers.handleMinEntriesChange(
+                    value,
+                    setLocalMinEntries,
+                  )
+                }
+                onSelect={(value) =>
+                  inputHandlers.handleMinEntriesSelect(
+                    value,
+                    setLocalMinEntries,
+                  )
+                }
                 onKeyDown={inputHandlers.handleKeyDown}
               />
             </div>
@@ -374,8 +434,12 @@ function CommandersPageShell({
                 min="1"
                 dropdownClassName="event-size-dropdown"
                 options={EVENT_SIZE_OPTIONS}
-                onChange={(value) => inputHandlers.handleEventSizeChange(value, setLocalEventSize)}
-                onSelect={(value) => inputHandlers.handleEventSizeSelect(value, setLocalEventSize)}
+                onChange={(value) =>
+                  inputHandlers.handleEventSizeChange(value, setLocalEventSize)
+                }
+                onSelect={(value) =>
+                  inputHandlers.handleEventSizeSelect(value, setLocalEventSize)
+                }
                 onKeyDown={inputHandlers.handleKeyDown}
               />
             </div>
@@ -393,14 +457,16 @@ export const CommandersPage: EntryPointComponent<
   {commandersQueryRef: pages_CommandersQuery},
   {}
 > = ({queries}) => {
-
   const {preferences, updatePreference, isHydrated} = usePreferences(
     'commanders',
     DEFAULT_PREFERENCES.commanders!,
   );
 
   const serverPreferences = useMemo(() => {
-    if (typeof window !== 'undefined' && (window as any).__SERVER_PREFERENCES__) {
+    if (
+      typeof window !== 'undefined' &&
+      (window as any).__SERVER_PREFERENCES__
+    ) {
       return (window as any).__SERVER_PREFERENCES__;
     }
     return null;
@@ -438,18 +504,24 @@ export const CommandersPage: EntryPointComponent<
       query,
     );
 
-  const currentPreferences = useMemo(() => ({
-    sortBy: preferences?.sortBy || 'CONVERSION' as const,
-    timePeriod: preferences?.timePeriod || 'ONE_MONTH' as const,
-    colorId: preferences?.colorId || '',
-    minEntries: preferences?.minEntries || null,
-    minTournamentSize: preferences?.minTournamentSize || null,
-    display: preferences?.display || 'card' as const,
-  }), [preferences]);
+  const currentPreferences = useMemo(
+    () => ({
+      sortBy: preferences?.sortBy || ('CONVERSION' as const),
+      timePeriod: preferences?.timePeriod || ('ONE_MONTH' as const),
+      colorId: preferences?.colorId || '',
+      minEntries: preferences?.minEntries || null,
+      minTournamentSize: preferences?.minTournamentSize || null,
+      display: preferences?.display || ('card' as const),
+    }),
+    [preferences],
+  );
 
-  const secondaryStatistic = useMemo(() => 
-    currentPreferences.sortBy === 'CONVERSION' ? 'topCuts' as const : 'count' as const,
-    [currentPreferences.sortBy]
+  const secondaryStatistic = useMemo(
+    () =>
+      currentPreferences.sortBy === 'CONVERSION'
+        ? ('topCuts' as const)
+        : ('count' as const),
+    [currentPreferences.sortBy],
   );
 
   const handleRefetch = useCallback(() => {
@@ -459,11 +531,14 @@ export const CommandersPage: EntryPointComponent<
     });
   }, [refetch]);
 
-  const handleLoadMore = useCallback((count: number) => {
-    startTransition(() => {
-      loadNext(count);
-    });
-  }, [loadNext]);
+  const handleLoadMore = useCallback(
+    (count: number) => {
+      startTransition(() => {
+        loadNext(count);
+      });
+    },
+    [loadNext],
+  );
 
   const hasRefetchedRef = useRef(false);
 
@@ -475,29 +550,34 @@ export const CommandersPage: EntryPointComponent<
   useEffect(() => {
     if (isHydrated && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
-      
-      const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES.commanders;
-      const prefsMatch = JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
-      
+
+      const actualServerPrefs =
+        serverPreferences || DEFAULT_PREFERENCES.commanders;
+      const prefsMatch =
+        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
+
       console.log('🍪 [COMMANDERS] Hydration complete:', {
         clientPrefs: preferences,
         serverPrefs: actualServerPrefs,
         needsRefetch: !prefsMatch,
       });
-
     }
   }, [isHydrated, preferences, serverPreferences]);
 
-  const gridClasses = useMemo(() => cn(
-    'mx-auto grid w-full pb-4',
-    currentPreferences.display === 'table'
-      ? 'w-full grid-cols-1 gap-2'
-      : 'w-fit gap-4 md:grid-cols-2 xl:grid-cols-3'
-  ), [currentPreferences.display]);
+  const gridClasses = useMemo(
+    () =>
+      cn(
+        'mx-auto grid w-full pb-4',
+        currentPreferences.display === 'table'
+          ? 'w-full grid-cols-1 gap-2'
+          : 'w-fit gap-4 md:grid-cols-2 xl:grid-cols-3',
+      ),
+    [currentPreferences.display],
+  );
 
   const tableHeader = useMemo(() => {
     if (currentPreferences.display !== 'table') return null;
-    
+
     return (
       <div className="sticky top-[68px] hidden w-full grid-cols-[130px_minmax(350px,1fr)_100px_100px_100px_100px] items-center gap-x-2 overflow-x-hidden bg-[#514f86] p-4 text-sm text-white lg:grid">
         <div>Color</div>

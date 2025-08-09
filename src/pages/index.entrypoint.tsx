@@ -12,7 +12,6 @@ export const entrypoint: EntryPoint<
 > = {
   root: JSResource.fromModuleId('m#index'),
   getPreloadProps() {
-
     return {
       queries: {
         commandersQueryRef: {

@@ -47,7 +47,6 @@ import {FirstPartyPromo} from '../../../components/promo';
 import {Select} from '../../../components/select';
 import {formatOrdinals, formatPercent} from '../../../lib/client/format';
 
-
 const createDebouncedFunction = <T extends (...args: any[]) => any>(
   func: T,
   delay: number,
@@ -58,7 +57,6 @@ const createDebouncedFunction = <T extends (...args: any[]) => any>(
     timeoutId = setTimeout(() => func(...args), delay);
   }) as T;
 };
-
 
 const TIME_PERIOD_LABELS: Partial<Record<TimePeriod, string>> = {
   ONE_MONTH: '1 Month',
@@ -103,8 +101,9 @@ const DEFAULT_PREFERENCES = {
   maxStanding: null,
 } as const;
 
-
-const EntryCard = memo(function EntryCard(props: {entry: Commander_EntryCard$key}) {
+const EntryCard = memo(function EntryCard(props: {
+  entry: Commander_EntryCard$key;
+}) {
   const entry = useFragment(
     graphql`
       fragment Commander_EntryCard on Entry {
@@ -142,32 +141,44 @@ const EntryCard = memo(function EntryCard(props: {entry: Commander_EntryCard$key
     return playerName;
   }, [entry.player?.name, entry.standing]);
 
-  const entryNameNode = useMemo(() => (
-    <span className="relative flex items-baseline">
-      {entryName}
-      {entry.player?.isKnownCheater && (
-        <span className="absolute right-0 rounded-full bg-red-600 px-2 py-1 text-xs uppercase">
-          Cheater
+  const entryNameNode = useMemo(
+    () => (
+      <span className="relative flex items-baseline">
+        {entryName}
+        {entry.player?.isKnownCheater && (
+          <span className="absolute right-0 rounded-full bg-red-600 px-2 py-1 text-xs uppercase">
+            Cheater
+          </span>
+        )}
+      </span>
+    ),
+    [entryName, entry.player?.isKnownCheater],
+  );
+
+  const bottomText = useMemo(
+    () => (
+      <div className="flex">
+        <span className="flex-1">
+          {formatOrdinals(entry.standing)}&nbsp;/&nbsp;
+          {entry.tournament.size} players
         </span>
-      )}
-    </span>
-  ), [entryName, entry.player?.isKnownCheater]);
+        <span>
+          Wins: {entry.wins} / Losses: {entry.losses} / Draws: {entry.draws}
+        </span>
+      </div>
+    ),
+    [
+      entry.standing,
+      entry.tournament.size,
+      entry.wins,
+      entry.losses,
+      entry.draws,
+    ],
+  );
 
-  const bottomText = useMemo(() => (
-    <div className="flex">
-      <span className="flex-1">
-        {formatOrdinals(entry.standing)}&nbsp;/&nbsp;
-        {entry.tournament.size} players
-      </span>
-      <span>
-        Wins: {entry.wins} / Losses: {entry.losses} / Draws: {entry.draws}
-      </span>
-    </div>
-  ), [entry.standing, entry.tournament.size, entry.wins, entry.losses, entry.draws]);
-
-  const formattedDate = useMemo(() => 
-    format(entry.tournament.tournamentDate, 'MMMM do yyyy'),
-    [entry.tournament.tournamentDate]
+  const formattedDate = useMemo(
+    () => format(entry.tournament.tournamentDate, 'MMMM do yyyy'),
+    [entry.tournament.tournamentDate],
   );
 
   return (
@@ -191,14 +202,11 @@ const EntryCard = memo(function EntryCard(props: {entry: Commander_EntryCard$key
         >
           {entry.tournament.name}
         </Link>
-        <span className="line-clamp-1 text-sm opacity-70">
-          {formattedDate}
-        </span>
+        <span className="line-clamp-1 text-sm opacity-70">{formattedDate}</span>
       </div>
     </Card>
   );
 });
-
 
 const CommanderBanner = memo(function CommanderBanner(props: {
   commander: Commander_CommanderBanner$key;
@@ -231,29 +239,33 @@ const CommanderBanner = memo(function CommanderBanner(props: {
     props.commander,
   );
 
-  const stats = useMemo(() => 
-    props.dynamicStats || commander.stats,
-    [props.dynamicStats, commander.stats]
+  const stats = useMemo(
+    () => props.dynamicStats || commander.stats,
+    [props.dynamicStats, commander.stats],
   );
 
-  const cardImages = useMemo(() => 
-    commander.cards.flatMap((c) => c.imageUrls),
-    [commander.cards]
+  const cardImages = useMemo(
+    () => commander.cards.flatMap((c) => c.imageUrls),
+    [commander.cards],
   );
 
-  const topCutBiasValue = useMemo(() => 
-    stats.topCutBias > 0
-      ? (stats.topCuts / stats.topCutBias).toFixed(1)
-      : '0.0',
-    [stats.topCuts, stats.topCutBias]
+  const topCutBiasValue = useMemo(
+    () =>
+      stats.topCutBias > 0
+        ? (stats.topCuts / stats.topCutBias).toFixed(1)
+        : '0.0',
+    [stats.topCuts, stats.topCutBias],
   );
 
-  const statsDisplay = useMemo(() => ({
-    entries: stats.count,
-    metaShare: formatPercent(stats.metaShare),
-    conversionRate: formatPercent(stats.conversionRate),
-    topCutBias: topCutBiasValue,
-  }), [stats.count, stats.metaShare, stats.conversionRate, topCutBiasValue]);
+  const statsDisplay = useMemo(
+    () => ({
+      entries: stats.count,
+      metaShare: formatPercent(stats.metaShare),
+      conversionRate: formatPercent(stats.conversionRate),
+      topCutBias: topCutBiasValue,
+    }),
+    [stats.count, stats.metaShare, stats.conversionRate, topCutBiasValue],
+  );
 
   return (
     <div className="h-64 w-full bg-black/60 md:h-80">
@@ -300,7 +312,6 @@ const CommanderBanner = memo(function CommanderBanner(props: {
   );
 });
 
-
 function useCommanderMeta(commanderFromProps: Commander_CommanderMeta$key) {
   const commander = useFragment(
     graphql`
@@ -316,7 +327,6 @@ function useCommanderMeta(commanderFromProps: Commander_CommanderMeta$key) {
     description: `Top Performing and Recent Decklists for ${commander.name} in cEDH`,
   });
 }
-
 
 export const CommanderPageShell = memo(function CommanderPageShell({
   disableNavigation,
@@ -382,9 +392,9 @@ export const CommanderPageShell = memo(function CommanderPageShell({
 
   useCommanderMeta(commander);
 
-  const dynamicStats = useMemo(() => 
-    dynamicStatsFromData || commander.filteredStats,
-    [dynamicStatsFromData, commander.filteredStats]
+  const dynamicStats = useMemo(
+    () => dynamicStatsFromData || commander.filteredStats,
+    [dynamicStatsFromData, commander.filteredStats],
   );
 
   const [localEventSize, setLocalEventSize] = useState(
@@ -394,68 +404,86 @@ export const CommanderPageShell = memo(function CommanderPageShell({
     maxStanding?.toString() || '',
   );
 
-  
-  const debouncedUpdaters = useMemo(() => ({
-    eventSize: createDebouncedFunction((value: string) => {
-      const numValue = value === '' ? null : parseInt(value, 10);
-      if (numValue === null || (!isNaN(numValue) && numValue >= 0)) {
-        updatePreference(
-          'minEventSize' as keyof PreferencesMap['entry'],
-          numValue,
-        );
-      }
-    }, 250),
-    maxStanding: createDebouncedFunction((value: string) => {
-      const numValue = value === '' ? null : parseInt(value, 10);
-      if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-        updatePreference(
-          'maxStanding' as keyof PreferencesMap['entry'],
-          numValue,
-        );
-      }
-    }, 250),
-  }), [updatePreference]);
+  const debouncedUpdaters = useMemo(
+    () => ({
+      eventSize: createDebouncedFunction((value: string) => {
+        const numValue = value === '' ? null : parseInt(value, 10);
+        if (numValue === null || (!isNaN(numValue) && numValue >= 0)) {
+          updatePreference(
+            'minEventSize' as keyof PreferencesMap['entry'],
+            numValue,
+          );
+        }
+      }, 250),
+      maxStanding: createDebouncedFunction((value: string) => {
+        const numValue = value === '' ? null : parseInt(value, 10);
+        if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
+          updatePreference(
+            'maxStanding' as keyof PreferencesMap['entry'],
+            numValue,
+          );
+        }
+      }, 250),
+    }),
+    [updatePreference],
+  );
 
-  
   useEffect(() => {
     setLocalEventSize(minEventSize?.toString() || '');
     setLocalMaxStanding(maxStanding?.toString() || '');
   }, [minEventSize, maxStanding]);
 
-  
-  const handleSortBySelect = useCallback((value: EntriesSortBy) => {
-    updatePreference('sortBy' as keyof PreferencesMap['entry'], value);
-  }, [updatePreference]);
+  const handleSortBySelect = useCallback(
+    (value: EntriesSortBy) => {
+      updatePreference('sortBy' as keyof PreferencesMap['entry'], value);
+    },
+    [updatePreference],
+  );
 
-  const handleTimePeriodSelect = useCallback((value: string) => {
-    updatePreference('timePeriod' as keyof PreferencesMap['entry'], value);
-  }, [updatePreference]);
+  const handleTimePeriodSelect = useCallback(
+    (value: string) => {
+      updatePreference('timePeriod' as keyof PreferencesMap['entry'], value);
+    },
+    [updatePreference],
+  );
 
-  const handleEventSizeChange = useCallback((value: string) => {
-    setLocalEventSize(value);
-    debouncedUpdaters.eventSize(value);
-  }, [debouncedUpdaters]);
+  const handleEventSizeChange = useCallback(
+    (value: string) => {
+      setLocalEventSize(value);
+      debouncedUpdaters.eventSize(value);
+    },
+    [debouncedUpdaters],
+  );
 
-  const handleEventSizeSelect = useCallback((value: number | null) => {
-    const stringValue = value?.toString() || '';
-    startTransition(() => {
-      setLocalEventSize(stringValue);
-    });
-    updatePreference('minEventSize' as keyof PreferencesMap['entry'], value);
-  }, [updatePreference]);
+  const handleEventSizeSelect = useCallback(
+    (value: number | null) => {
+      const stringValue = value?.toString() || '';
+      startTransition(() => {
+        setLocalEventSize(stringValue);
+      });
+      updatePreference('minEventSize' as keyof PreferencesMap['entry'], value);
+    },
+    [updatePreference],
+  );
 
-  const handleMaxStandingChange = useCallback((value: string) => {
-    setLocalMaxStanding(value);
-    debouncedUpdaters.maxStanding(value);
-  }, [debouncedUpdaters]);
+  const handleMaxStandingChange = useCallback(
+    (value: string) => {
+      setLocalMaxStanding(value);
+      debouncedUpdaters.maxStanding(value);
+    },
+    [debouncedUpdaters],
+  );
 
-  const handleMaxStandingSelect = useCallback((value: number | null) => {
-    const stringValue = value?.toString() || '';
-    startTransition(() => {
-      setLocalMaxStanding(stringValue);
-    });
-    updatePreference('maxStanding' as keyof PreferencesMap['entry'], value);
-  }, [updatePreference]);
+  const handleMaxStandingSelect = useCallback(
+    (value: number | null) => {
+      const stringValue = value?.toString() || '';
+      startTransition(() => {
+        setLocalMaxStanding(stringValue);
+      });
+      updatePreference('maxStanding' as keyof PreferencesMap['entry'], value);
+    },
+    [updatePreference],
+  );
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === 'Go') {
@@ -463,15 +491,16 @@ export const CommanderPageShell = memo(function CommanderPageShell({
     }
   }, []);
 
-  
-  const currentTimePeriodLabel = useMemo(() => 
-    TIME_PERIOD_LABELS[preferences?.timePeriod || timePeriod || undefined] || TIME_PERIOD_LABELS.ONE_YEAR,
-    [preferences?.timePeriod, timePeriod]
+  const currentTimePeriodLabel = useMemo(
+    () =>
+      TIME_PERIOD_LABELS[preferences?.timePeriod || timePeriod || undefined] ||
+      TIME_PERIOD_LABELS.ONE_YEAR,
+    [preferences?.timePeriod, timePeriod],
   );
 
-  const currentSortByLabel = useMemo(() => 
-    sortBy === 'TOP' ? 'Top Performing' : 'Recent',
-    [sortBy]
+  const currentSortByLabel = useMemo(
+    () => (sortBy === 'TOP' ? 'Top Performing' : 'Recent'),
+    [sortBy],
   );
 
   return (
@@ -541,10 +570,12 @@ export const CommanderPage: EntryPointComponent<
   {commanderQueryRef: Commander_CommanderQuery},
   {}
 > = ({queries}) => {
-  const {preferences, updatePreference, isHydrated} = usePreferences('entry', DEFAULT_PREFERENCES);
+  const {preferences, updatePreference, isHydrated} = usePreferences(
+    'entry',
+    DEFAULT_PREFERENCES,
+  );
   const hasRefetchedRef = useRef(false);
 
-  
   const serverPreferences = useMemo(() => {
     if (
       typeof window !== 'undefined' &&
@@ -631,22 +662,22 @@ export const CommanderPage: EntryPointComponent<
       commander,
     );
 
-  
-  const refetchParams = useMemo(() => ({
-    sortBy: preferences?.sortBy || DEFAULT_PREFERENCES.sortBy,
-    timePeriod: preferences?.timePeriod || DEFAULT_PREFERENCES.timePeriod,
-    minEventSize: preferences?.minEventSize || undefined,
-    maxStanding: preferences?.maxStanding || undefined,
-  }), [preferences]);
+  const refetchParams = useMemo(
+    () => ({
+      sortBy: preferences?.sortBy || DEFAULT_PREFERENCES.sortBy,
+      timePeriod: preferences?.timePeriod || DEFAULT_PREFERENCES.timePeriod,
+      minEventSize: preferences?.minEventSize || undefined,
+      maxStanding: preferences?.maxStanding || undefined,
+    }),
+    [preferences],
+  );
 
-  
   const handleRefetch = useCallback(() => {
     startTransition(() => {
       refetch(refetchParams, {fetchPolicy: 'network-only'});
     });
   }, [refetch, refetchParams]);
 
-  
   const handleLoadMore = useCallback(
     (count: number) => {
       startTransition(() => {
@@ -656,19 +687,18 @@ export const CommanderPage: EntryPointComponent<
     [loadNext],
   );
 
-  
   useEffect(() => {
     setRefetchCallback(handleRefetch);
     return clearRefetchCallback;
   }, [handleRefetch]);
 
-  
   useEffect(() => {
     if (isHydrated && !hasRefetchedRef.current) {
       hasRefetchedRef.current = true;
 
       const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES;
-      const prefsMatch = JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
+      const prefsMatch =
+        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
 
       if (!prefsMatch) {
         setTimeout(() => {
@@ -678,21 +708,23 @@ export const CommanderPage: EntryPointComponent<
     }
   }, [isHydrated, preferences, serverPreferences, handleRefetch]);
 
-  
-  const entryCards = useMemo(() => 
-    data.entries.edges.map(({node}) => (
-      <EntryCard key={node.id} entry={node} />
-    )),
-    [data.entries.edges]
+  const entryCards = useMemo(
+    () =>
+      data.entries.edges.map(({node}) => (
+        <EntryCard key={node.id} entry={node} />
+      )),
+    [data.entries.edges],
   );
 
-  
-  const shellPreferences = useMemo(() => ({
-    maxStanding: preferences?.maxStanding || null,
-    minEventSize: preferences?.minEventSize || null,
-    sortBy: preferences?.sortBy || DEFAULT_PREFERENCES.sortBy,
-    timePeriod: preferences?.timePeriod || DEFAULT_PREFERENCES.timePeriod,
-  }), [preferences]);
+  const shellPreferences = useMemo(
+    () => ({
+      maxStanding: preferences?.maxStanding || null,
+      minEventSize: preferences?.minEventSize || null,
+      sortBy: preferences?.sortBy || DEFAULT_PREFERENCES.sortBy,
+      timePeriod: preferences?.timePeriod || DEFAULT_PREFERENCES.timePeriod,
+    }),
+    [preferences],
+  );
 
   return (
     <CommanderPageShell

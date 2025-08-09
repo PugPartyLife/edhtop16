@@ -32,7 +32,7 @@ export function createServerEnvironment(
       preferences ?? {commanders: {}},
       () => {},
     );
-    
+
     const results = await graphql({
       schema,
       source,
