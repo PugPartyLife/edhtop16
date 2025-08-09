@@ -2,11 +2,9 @@ import {AllTournamentsQuery} from '#genfiles/queries/AllTournamentsQuery.graphql
 import {tournaments_TournamentCard$key} from '#genfiles/queries/tournaments_TournamentCard.graphql';
 import {tournaments_Tournaments$key} from '#genfiles/queries/tournaments_Tournaments.graphql';
 import {
-  TimePeriod,
   tournaments_TournamentsQuery,
-  TournamentSortBy,
 } from '#genfiles/queries/tournaments_TournamentsQuery.graphql';
-import {RouteLink, useNavigation} from '#genfiles/river/router';
+import {RouteLink} from '#genfiles/river/router';
 import {useSeoMeta} from '@unhead/react';
 import {format} from 'date-fns';
 import {
@@ -15,6 +13,8 @@ import {
   useState,
   useEffect,
   useCallback,
+  startTransition,
+  useRef,
 } from 'react';
 import {
   EntryPointComponent,
@@ -23,6 +23,13 @@ import {
   usePaginationFragment,
   usePreloadedQuery,
 } from 'react-relay/hooks';
+import {
+  usePreferences,
+  setRefetchCallback,
+  clearRefetchCallback,
+  type PreferencesMap,
+  DEFAULT_PREFERENCES,
+} from '../lib/client/cookies';
 import {Card} from '../components/card';
 import {Dropdown} from '../components/dropdown';
 import {Footer} from '../components/footer';
@@ -30,16 +37,16 @@ import {LoadMoreButton} from '../components/load_more';
 import {Navigation} from '../components/navigation';
 import {NumberInputDropdown} from '../components/number_input_dropdown';
 
-function debounce<T extends (...args: any[]) => any>(
+const debounce = <T extends (...args: any[]) => any>(
   func: T,
   delay: number,
-): T {
+): T => {
   let timeoutId: NodeJS.Timeout;
   return ((...args: any[]) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
   }) as T;
-}
+};
 
 function TournamentCard(props: {commander: tournaments_TournamentCard$key}) {
   const tournament = useFragment(
@@ -105,41 +112,43 @@ function TournamentsPageShell({
   sortBy,
   timePeriod,
   minSize,
+  updatePreference,
+  preferences,
   children,
 }: PropsWithChildren<{
-  sortBy: TournamentSortBy;
-  timePeriod: TimePeriod;
-  minSize: string;
+  sortBy: 'PLAYERS' | 'DATE';
+  timePeriod: 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'ALL_TIME' | 'POST_BAN';
+  minSize: number;
+  updatePreference: (
+    key: keyof PreferencesMap['tournaments'],
+    value: any,
+  ) => void;
+  preferences: PreferencesMap['tournaments'];
 }>) {
   useSeoMeta({
     title: 'cEDH Tournaments',
     description: 'Discover top and recent cEDH tournaments!',
   });
 
-  const {replaceRoute} = useNavigation();
-
   const [localMinSize, setLocalMinSize] = useState(
-    minSize && parseInt(minSize, 10) > 0 ? minSize : '',
+    minSize > 0 ? minSize.toString() : '',
   );
+
+  const debouncedMinSizeUpdate = useRef(
+    debounce((value: string) => {
+      const numValue = value === '' ? 0 : parseInt(value, 10);
+      if (!isNaN(numValue) && numValue >= 0) {
+        updatePreference(
+          'minSize' as keyof PreferencesMap['tournaments'],
+          numValue,
+        );
+      }
+    }, 250),
+  ).current;
 
   useEffect(() => {
-    setLocalMinSize(minSize && parseInt(minSize, 10) > 0 ? minSize : '');
+    setLocalMinSize(minSize > 0 ? minSize.toString() : '');
   }, [minSize]);
-
-  const debouncedMinSizeUpdate = useMemo(
-    () =>
-      debounce((value: string) => {
-        if (value === '') {
-          replaceRoute('/tournaments', {minSize: 0});
-        } else {
-          const numValue = parseInt(value, 10);
-          if (!isNaN(numValue) && numValue >= 0) {
-            replaceRoute('/tournaments', {minSize: numValue});
-          }
-        }
-      }, 300),
-    [replaceRoute],
-  );
 
   const handleMinSizeChange = useCallback(
     (value: string) => {
@@ -151,11 +160,17 @@ function TournamentsPageShell({
 
   const handleMinSizeSelect = useCallback(
     (value: number | null) => {
-      const stringValue = value?.toString() || '';
-      setLocalMinSize(stringValue);
-      replaceRoute('/tournaments', {minSize: value || 0});
+      const numValue = value || 0;
+      const stringValue = numValue > 0 ? numValue.toString() : '';
+      startTransition(() => {
+        setLocalMinSize(stringValue);
+      });
+      updatePreference(
+        'minSize' as keyof PreferencesMap['tournaments'],
+        numValue,
+      );
     },
-    [replaceRoute],
+    [updatePreference],
   );
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -163,6 +178,18 @@ function TournamentsPageShell({
       (e.target as HTMLInputElement).blur();
     }
   }, []);
+
+  const getTimePeriodLabel = (period: string) => {
+    const labels: {[key: string]: string} = {
+      ONE_MONTH: '1 Month',
+      THREE_MONTHS: '3 Months',
+      SIX_MONTHS: '6 Months',
+      ONE_YEAR: '1 Year',
+      ALL_TIME: 'All Time',
+      POST_BAN: 'Post Ban',
+    };
+    return labels[period] || 'All Time';
+  };
 
   return (
     <>
@@ -184,13 +211,16 @@ function TournamentsPageShell({
                 value={sortBy === 'PLAYERS' ? 'Tournament Size' : 'Date'}
                 options={[
                   {
-                    value: 'PLAYERS' as TournamentSortBy,
+                    value: 'PLAYERS',
                     label: 'Tournament Size',
                   },
-                  {value: 'DATE' as TournamentSortBy, label: 'Date'},
+                  {value: 'DATE', label: 'Date'},
                 ]}
                 onSelect={(value) => {
-                  replaceRoute('/tournaments', {sortBy: value});
+                  updatePreference(
+                    'sortBy' as keyof PreferencesMap['tournaments'],
+                    value,
+                  );
                 }}
               />
             </div>
@@ -199,29 +229,22 @@ function TournamentsPageShell({
               <Dropdown
                 id="tournaments-time-period"
                 label="Time Period"
-                value={
-                  timePeriod === 'ONE_MONTH'
-                    ? '1 Month'
-                    : timePeriod === 'THREE_MONTHS'
-                      ? '3 Months'
-                      : timePeriod === 'SIX_MONTHS'
-                        ? '6 Months'
-                        : timePeriod === 'POST_BAN'
-                          ? 'Post Ban'
-                          : timePeriod === 'ONE_YEAR'
-                            ? '1 Year'
-                            : 'All Time'
-                }
+                value={getTimePeriodLabel(
+                  preferences?.timePeriod || timePeriod,
+                )}
                 options={[
-                  {value: 'ONE_MONTH' as TimePeriod, label: '1 Month'},
-                  {value: 'THREE_MONTHS' as TimePeriod, label: '3 Months'},
-                  {value: 'SIX_MONTHS' as TimePeriod, label: '6 Months'},
-                  {value: 'POST_BAN' as TimePeriod, label: 'Post Ban'},
-                  {value: 'ONE_YEAR' as TimePeriod, label: '1 Year'},
-                  {value: 'ALL_TIME' as TimePeriod, label: 'All Time'},
+                  {value: 'ONE_MONTH' as const, label: '1 Month'},
+                  {value: 'THREE_MONTHS' as const, label: '3 Months'},
+                  {value: 'SIX_MONTHS' as const, label: '6 Months'},
+                  {value: 'POST_BAN' as const, label: 'Post Ban'},
+                  {value: 'ONE_YEAR' as const, label: '1 Year'},
+                  {value: 'ALL_TIME' as const, label: 'All Time'},
                 ]}
                 onSelect={(value) => {
-                  replaceRoute('/tournaments', {timePeriod: value});
+                  updatePreference(
+                    'timePeriod' as keyof PreferencesMap['tournaments'],
+                    value,
+                  );
                 }}
               />
             </div>
@@ -259,20 +282,35 @@ export const TournamentsPage: EntryPointComponent<
   {tournamentQueryRef: tournaments_TournamentsQuery},
   {}
 > = ({queries}) => {
+  const {preferences, updatePreference, isHydrated} = usePreferences(
+    'tournaments',
+    DEFAULT_PREFERENCES.tournaments!,
+  );
+  const hasRefetchedRef = useRef(false);
+
+  const serverPreferences = useMemo(() => {
+    if (
+      typeof window !== 'undefined' &&
+      (window as any).__SERVER_PREFERENCES__
+    ) {
+      const prefs = (window as any).__SERVER_PREFERENCES__;
+      return prefs;
+    }
+    return null;
+  }, []);
+
+  console.log('🍪 [TOURNAMENTS] Client preferences:', preferences);
+
   const query = usePreloadedQuery(
     graphql`
-      query tournaments_TournamentsQuery(
-        $timePeriod: TimePeriod!
-        $sortBy: TournamentSortBy!
-        $minSize: Int!
-      ) @preloadable {
+      query tournaments_TournamentsQuery @preloadable {
         ...tournaments_Tournaments
       }
     `,
     queries.tournamentQueryRef,
   );
 
-  const {data, loadNext, isLoadingNext, hasNext} = usePaginationFragment<
+  const {data, loadNext, isLoadingNext, hasNext, refetch} = usePaginationFragment<
     AllTournamentsQuery,
     tournaments_Tournaments$key
   >(
@@ -283,12 +321,8 @@ export const TournamentsPage: EntryPointComponent<
         count: {type: "Int", defaultValue: 100}
       )
       @refetchable(queryName: "AllTournamentsQuery") {
-        tournaments(
-          first: $count
-          after: $cursor
-          filters: {timePeriod: $timePeriod, minSize: $minSize}
-          sortBy: $sortBy
-        ) @connection(key: "tournaments__tournaments") {
+        tournaments(first: $count, after: $cursor)
+          @connection(key: "tournaments__tournaments") {
           edges {
             node {
               id
@@ -301,11 +335,61 @@ export const TournamentsPage: EntryPointComponent<
     query,
   );
 
+  const handleRefetch = useCallback(() => {
+    console.log('🔄 [TOURNAMENTS] Manual refetch triggered');
+    startTransition(() => {
+      refetch({}, {fetchPolicy: 'network-only'});
+    });
+  }, [refetch]);
+
+  const handleLoadMore = useCallback(
+    (count: number) => {
+      startTransition(() => {
+        loadNext(count);
+      });
+    },
+    [loadNext],
+  );
+
+  useEffect(() => {
+    setRefetchCallback(handleRefetch);
+    return clearRefetchCallback;
+  }, [handleRefetch]);
+
+  useEffect(() => {
+    if (isHydrated && !hasRefetchedRef.current) {
+      hasRefetchedRef.current = true;
+
+      const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES.tournaments;
+
+      const prefsMatch =
+        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
+
+      console.log('🔄 [TOURNAMENTS] Hydration check:', {
+        clientPrefs: preferences,
+        serverPrefs: actualServerPrefs,
+        prefsMatch,
+      });
+
+      if (!prefsMatch) {
+        console.log(
+          '🔄 [TOURNAMENTS] Client preferences differ from server - refetch will be triggered by cookies.ts',
+        );
+      } else {
+        console.log(
+          '🔄 [TOURNAMENTS] No refetch needed - client and server preferences match',
+        );
+      }
+    }
+  }, [isHydrated, preferences, serverPreferences]);
+
   return (
     <TournamentsPageShell
-      sortBy={queries.tournamentQueryRef.variables.sortBy}
-      timePeriod={queries.tournamentQueryRef.variables.timePeriod}
-      minSize={`${queries.tournamentQueryRef.variables.minSize}`}
+      sortBy={preferences?.sortBy || 'DATE'}
+      timePeriod={preferences?.timePeriod || 'ALL_TIME'}
+      minSize={preferences?.minSize || 0}
+      updatePreference={updatePreference}
+      preferences={preferences}
     >
       <div className="grid w-fit grid-cols-1 gap-4 pb-4 md:grid-cols-2 xl:grid-cols-3">
         {data.tournaments.edges.map((edge) => (
@@ -316,7 +400,7 @@ export const TournamentsPage: EntryPointComponent<
       <LoadMoreButton
         hasNext={hasNext}
         isLoadingNext={isLoadingNext}
-        loadNext={loadNext}
+        loadNext={handleLoadMore}
       />
 
       <Footer />

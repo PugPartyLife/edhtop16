@@ -35,10 +35,23 @@ export interface TournamentPreferences {
   commander?: string | null;
 }
 
+export interface TournamentsPreferences {
+  sortBy?: 'PLAYERS' | 'DATE';
+  timePeriod?:
+    | 'ONE_MONTH'
+    | 'THREE_MONTHS'
+    | 'SIX_MONTHS'
+    | 'ONE_YEAR'
+    | 'ALL_TIME'
+    | 'POST_BAN';
+  minSize?: number;
+}
+
 export type PreferencesMap = {
   commanders?: CommandersPreferences;
   entry?: EntryPreferences;
   tournament?: TournamentPreferences;
+  tournaments?: TournamentsPreferences;
   // Add more as needed
 };
 
@@ -60,6 +73,11 @@ export const DEFAULT_PREFERENCES: PreferencesMap = {
   tournament: {
     tab: 'entries',
     commander: null,
+  },
+  tournaments: {
+    sortBy: 'DATE',
+    timePeriod: 'ALL_TIME',
+    minSize: 0,
   },
 };
 
@@ -189,3 +207,4 @@ export function usePreferences<K extends keyof PreferencesMap>(
 // const {preferences, updatePreference} = usePreferences('commanders', DEFAULT_PREFERENCES.commanders);
 // const {preferences, updatePreference} = usePreferences('entry', DEFAULT_PREFERENCES.entry);
 // const {preferences, updatePreference} = usePreferences('tournament', DEFAULT_PREFERENCES.tournament);
+// const {preferences, updatePreference} = usePreferences('tournaments', DEFAULT_PREFERENCES.tournaments);

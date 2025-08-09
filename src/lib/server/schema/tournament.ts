@@ -219,48 +219,81 @@ const TournamentFiltersInput = builder.inputType('TournamentFilters', {
   }),
 });
 
+// Updated tournaments resolver to use preferences from cookies
 builder.queryField('tournaments', (t) =>
   t.connection({
     type: Tournament,
     args: {
       search: t.arg.string(),
+      // Keep legacy filters for backward compatibility, but preferences take precedence
       filters: t.arg({type: TournamentFiltersInput}),
       sortBy: t.arg({type: TournamentSortBy, defaultValue: 'DATE'}),
     },
-    resolve: async (_, args) =>
-      resolveOffsetConnection({args}, ({limit, offset}) => {
+    resolve: async (_, args, context) => {
+      // Extract preferences from context (cookies strategy)
+      const preferences = context.preferences.tournaments || {
+        sortBy: 'DATE',
+        timePeriod: 'ALL_TIME',
+        minSize: 0,
+      };
+
+      console.log('🔧 [SERVER] Tournaments preferences received:', preferences);
+
+      return resolveOffsetConnection({args}, ({limit, offset}) => {
         let query = db.selectFrom('Tournament').selectAll();
 
         if (args.search) {
           query = query.where('name', 'like', `%${args.search}%`);
         }
-        if (args.filters?.minSize) {
-          query = query.where('size', '>=', args.filters.minSize);
+
+        // Apply minSize filter from preferences (takes precedence over args.filters)
+        const minSize = preferences.minSize || args.filters?.minSize || 0;
+        if (minSize > 0) {
+          query = query.where('size', '>=', minSize);
         }
+
+        // Apply maxSize filter (legacy support)
         if (args.filters?.maxSize) {
           query = query.where('size', '<=', args.filters.maxSize);
         }
-        if (args.filters?.timePeriod || args.filters?.minDate) {
-          const minDate =
-            args.filters?.minDate != null
-              ? new Date(args.filters?.minDate ?? 0)
-              : minDateFromTimePeriod(args.filters?.timePeriod);
 
+        // Apply timePeriod filter from preferences (takes precedence over args.filters)
+        const timePeriod = preferences.timePeriod || args.filters?.timePeriod;
+        if (timePeriod && timePeriod !== 'ALL_TIME') {
+          const minDate = args.filters?.minDate 
+            ? new Date(args.filters.minDate)
+            : minDateFromTimePeriod(timePeriod);
+          
           query = query.where('tournamentDate', '>=', minDate.toISOString());
+        } else if (args.filters?.minDate) {
+          // Fallback to legacy minDate if no timePeriod preference
+          query = query.where('tournamentDate', '>=', new Date(args.filters.minDate).toISOString());
         }
+
+        // Apply maxDate filter (legacy support)
         const maxDate = args.filters?.maxDate
           ? new Date(args.filters.maxDate)
           : new Date();
         query = query.where('tournamentDate', '<=', maxDate.toISOString());
 
-        if (args.sortBy === 'PLAYERS') {
+        // Apply sortBy from preferences (takes precedence over args.sortBy)
+        const sortBy = preferences.sortBy || args.sortBy || 'DATE';
+        if (sortBy === 'PLAYERS') {
           query = query.orderBy(['size desc', 'tournamentDate desc']);
         } else {
           query = query.orderBy(['tournamentDate desc', 'size desc']);
         }
 
+        console.log('🔧 [SERVER] Applied filters:', {
+          minSize,
+          timePeriod,
+          sortBy,
+          hasSearch: !!args.search,
+        });
+
         return query.limit(limit).offset(offset).execute();
-      }),
+      });
+    },
   }),
 );
 

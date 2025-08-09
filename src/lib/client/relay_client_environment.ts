@@ -1,9 +1,11 @@
 import {Environment, Network, RecordSource, Store} from 'relay-runtime';
-import type {CommandersPreferences, EntryPreferences} from './cookies';
+import type {CommandersPreferences, EntryPreferences, TournamentPreferences, TournamentsPreferences} from './cookies';
 
 type PreferencesMap = {
   commanders?: CommandersPreferences;
   entry?: EntryPreferences;
+  tournament?: TournamentPreferences;
+  tournaments?: TournamentsPreferences;
   // Add more as needed
 };
 
