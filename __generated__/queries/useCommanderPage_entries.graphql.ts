@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<22e170784ace1ef56959b1abf2a1362b>>
+ * @generated SignedSource<<68e9a9870da1edef086b9a38231769f7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,12 +10,12 @@
 
 import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type Commander_entries$data = {
+export type useCommanderPage_entries$data = {
   readonly entries: {
     readonly edges: ReadonlyArray<{
       readonly node: {
         readonly id: string;
-        readonly " $fragmentSpreads": FragmentRefs<"Commander_EntryCard">;
+        readonly " $fragmentSpreads": FragmentRefs<"commanderPage_EntryCard">;
       };
     }>;
   };
@@ -27,11 +27,11 @@ export type Commander_entries$data = {
     readonly topCuts: number;
   };
   readonly id: string;
-  readonly " $fragmentType": "Commander_entries";
+  readonly " $fragmentType": "useCommanderPage_entries";
 };
-export type Commander_entries$key = {
-  readonly " $data"?: Commander_entries$data;
-  readonly " $fragmentSpreads": FragmentRefs<"Commander_entries">;
+export type useCommanderPage_entries$key = {
+  readonly " $data"?: useCommanderPage_entries$data;
+  readonly " $fragmentSpreads": FragmentRefs<"useCommanderPage_entries">;
 };
 
 import CommanderEntriesQuery_graphql from './CommanderEntriesQuery.graphql';
@@ -125,7 +125,7 @@ return {
       }
     }
   },
-  "name": "Commander_entries",
+  "name": "useCommanderPage_entries",
   "selections": [
     {
       "alias": null,
@@ -212,7 +212,7 @@ return {
                 {
                   "args": null,
                   "kind": "FragmentSpread",
-                  "name": "Commander_EntryCard"
+                  "name": "commanderPage_EntryCard"
                 },
                 {
                   "alias": null,
@@ -269,6 +269,6 @@ return {
 };
 })();
 
-(node as any).hash = "e2eb1a6004d1577d0b02ac9eeb9998d4";
+(node as any).hash = "0cefb27bfbaa5fa75d3a4b6a4bed9bdb";
 
 export default node;

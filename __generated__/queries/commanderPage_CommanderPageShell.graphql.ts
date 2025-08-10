@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bbae723c23db56109d4c592af7f794df>>
+ * @generated SignedSource<<6f73e2d4a94c2a2af278cb29e83ecdd9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type Commander_CommanderPageShell$data = {
+export type commanderPage_CommanderPageShell$data = {
   readonly breakdownUrl: string;
   readonly filteredStats: {
     readonly conversionRate: number;
@@ -23,12 +23,12 @@ export type Commander_CommanderPageShell$data = {
   readonly promo: {
     readonly " $fragmentSpreads": FragmentRefs<"promo_EmbededPromo">;
   } | null | undefined;
-  readonly " $fragmentSpreads": FragmentRefs<"Commander_CommanderBanner" | "Commander_CommanderMeta">;
-  readonly " $fragmentType": "Commander_CommanderPageShell";
+  readonly " $fragmentSpreads": FragmentRefs<"commanderPage_CommanderBanner" | "commanderPage_CommanderMeta">;
+  readonly " $fragmentType": "commanderPage_CommanderPageShell";
 };
-export type Commander_CommanderPageShell$key = {
-  readonly " $data"?: Commander_CommanderPageShell$data;
-  readonly " $fragmentSpreads": FragmentRefs<"Commander_CommanderPageShell">;
+export type commanderPage_CommanderPageShell$key = {
+  readonly " $data"?: commanderPage_CommanderPageShell$data;
+  readonly " $fragmentSpreads": FragmentRefs<"commanderPage_CommanderPageShell">;
 };
 
 const node: ReaderFragment = {
@@ -51,7 +51,7 @@ const node: ReaderFragment = {
   ],
   "kind": "Fragment",
   "metadata": null,
-  "name": "Commander_CommanderPageShell",
+  "name": "commanderPage_CommanderPageShell",
   "selections": [
     {
       "alias": null,
@@ -70,12 +70,12 @@ const node: ReaderFragment = {
     {
       "args": null,
       "kind": "FragmentSpread",
-      "name": "Commander_CommanderBanner"
+      "name": "commanderPage_CommanderBanner"
     },
     {
       "args": null,
       "kind": "FragmentSpread",
-      "name": "Commander_CommanderMeta"
+      "name": "commanderPage_CommanderMeta"
     },
     {
       "alias": null,
@@ -160,6 +160,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "45f3c39d8ea7c58249170be81e0b2faa";
+(node as any).hash = "8c55791fb70a43c087f86d8ae6d8f16b";
 
 export default node;

@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<81988c50c90b2e87c16ae77fd19cc2ef>>
- * @relayHash c6615de4ea65d559e8a4b7badd70aad4
+ * @generated SignedSource<<86a70cf4519e2884914db3f56f8b8bbf>>
+ * @relayHash 252b2af7bf2203d2770e41fc21400edd
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID c6615de4ea65d559e8a4b7badd70aad4
+// @relayRequestID 252b2af7bf2203d2770e41fc21400edd
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
@@ -26,7 +26,7 @@ export type CommanderEntriesQuery$variables = {
 };
 export type CommanderEntriesQuery$data = {
   readonly node: {
-    readonly " $fragmentSpreads": FragmentRefs<"Commander_entries">;
+    readonly " $fragmentSpreads": FragmentRefs<"useCommanderPage_entries">;
   } | null | undefined;
 };
 export type CommanderEntriesQuery = {
@@ -180,7 +180,7 @@ return {
               (v10/*: any*/)
             ],
             "kind": "FragmentSpread",
-            "name": "Commander_entries"
+            "name": "useCommanderPage_entries"
           }
         ],
         "storageKey": null
@@ -440,7 +440,7 @@ return {
     ]
   },
   "params": {
-    "id": "c6615de4ea65d559e8a4b7badd70aad4",
+    "id": "252b2af7bf2203d2770e41fc21400edd",
     "metadata": {},
     "name": "CommanderEntriesQuery",
     "operationKind": "query",
@@ -449,6 +449,6 @@ return {
 };
 })();
 
-(node as any).hash = "e2eb1a6004d1577d0b02ac9eeb9998d4";
+(node as any).hash = "0cefb27bfbaa5fa75d3a4b6a4bed9bdb";
 
 export default node;

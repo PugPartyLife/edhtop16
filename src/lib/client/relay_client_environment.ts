@@ -11,9 +11,18 @@ import type {
 export type SessionData = {
   preferences: PreferencesMap;
   userId?: string;
+  username?: string;
   isAuthenticated?: boolean;
   isAdmin?: boolean;
   sessionId?: string;
+  userProfile?: {
+    displayName: string;
+    email: string;
+    favoriteCommander: string;
+    joinDate: string;
+    totalGames: number;
+    winRate: number;
+  };
   [key: string]: any;
 };
 

@@ -3,6 +3,8 @@ import { EntryPointComponent, graphql, usePreloadedQuery } from 'react-relay/hoo
 import { pages_CommandersQuery } from '#genfiles/queries/pages_CommandersQuery.graphql';
 import { pages_topCommanders$key } from '#genfiles/queries/pages_topCommanders.graphql';
 import { TopCommandersQuery } from '#genfiles/queries/TopCommandersQuery.graphql';
+import RectangleStackIcon from '@heroicons/react/24/solid/RectangleStackIcon';
+import TableCellsIcon from '@heroicons/react/24/solid/TableCellsIcon';
 
 import { Footer } from '../components/footer';
 import { LoadMoreButton } from '../components/load_more';
@@ -12,8 +14,9 @@ import {
   CommandersFilters,
   CommandersGrid 
 } from '../components/commanders_page';
-import { useCommandersPage } from '../hooks/useCommanderPage';
+import { useCommandersPage } from '../hooks/useCommandersPage';
 import { useSession } from '../lib/client/use_session';
+import { SessionStatus } from '../components/session_status';
 
 /** @resource m#index */
 export const CommandersPage: EntryPointComponent<
@@ -80,11 +83,32 @@ export const CommandersPage: EntryPointComponent<
 
   return (
     <CommandersPageShell>
-      <CommandersHeader
-        display={currentPreferences.display}
-        onDisplayToggle={handleDisplayToggle}
-        isAuthenticated={isAuthenticated}
-      />
+      {/* Header with SessionStatus in top-right */}
+      <div className="flex w-full items-baseline gap-4 mb-8">
+        <h1 className="font-title flex-1 text-5xl font-extrabold text-white">
+          cEDH Metagame Breakdown
+          {isAuthenticated && (
+            <span className="ml-2 text-sm text-green-400 font-normal">
+              (Session Active)
+            </span>
+          )}
+        </h1>
+        
+        <div className="flex items-center gap-4">
+          <SessionStatus showDetails={false} />
+          <button
+            onClick={handleDisplayToggle}
+            className="cursor-pointer"
+            aria-label={`Switch to ${currentPreferences.display === 'table' ? 'card' : 'table'} view`}
+          >
+            {currentPreferences.display === 'card' ? (
+              <TableCellsIcon className="h-6 w-6 text-white" />
+            ) : (
+              <RectangleStackIcon className="h-6 w-6 text-white" />
+            )}
+          </button>
+        </div>
+      </div>
 
       <CommandersFilters
         currentPreferences={currentPreferences}
@@ -99,17 +123,25 @@ export const CommandersPage: EntryPointComponent<
         onColorChange={handleColorChange}
       />
 
-      <CommandersGrid
-        commanders={data.commanders.edges}
-        display={currentPreferences.display}
-        secondaryStatistic={secondaryStatistic}
-      />
+      {data?.commanders?.edges ? (
+        <>
+          <CommandersGrid
+            commanders={data.commanders.edges}
+            display={currentPreferences.display}
+            secondaryStatistic={secondaryStatistic}
+          />
 
-      <LoadMoreButton
-        hasNext={hasNext}
-        isLoadingNext={isLoadingNext}
-        loadNext={handleLoadMore}
-      />
+          <LoadMoreButton
+            hasNext={hasNext}
+            isLoadingNext={isLoadingNext}
+            loadNext={handleLoadMore}
+          />
+        </>
+      ) : (
+        <div className="text-center text-white py-8">
+          Loading commanders...
+        </div>
+      )}
 
       <Footer />
     </CommandersPageShell>

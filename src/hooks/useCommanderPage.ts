@@ -1,15 +1,22 @@
-import { useState, useEffect, useMemo, useCallback, useRef, startTransition } from 'react';
-import { usePaginationFragment } from 'react-relay/hooks';
-import { 
-  usePreferences, 
-  setRefetchCallback, 
+import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from 'react';
+import { usePaginationFragment, usePreloadedQuery, PreloadedQuery } from 'react-relay/hooks';
+import { graphql } from 'relay-runtime';
+import {
+  usePreferences,
+  setRefetchCallback,
   clearRefetchCallback,
   type PreferencesMap,
-  DEFAULT_PREFERENCES 
 } from '../lib/client/cookies';
 import { useSession } from '../lib/client/use_session';
+import {
+  useCommanderPage_CommanderQuery,
+  EntriesSortBy,
+  TimePeriod,
+} from '#genfiles/queries/useCommanderPage_CommanderQuery.graphql';
+import { useCommanderPage_entries$key } from '#genfiles/queries/useCommanderPage_entries.graphql';
+import { CommanderEntriesQuery } from '#genfiles/queries/CommanderEntriesQuery.graphql';
 
-const createDebouncer = <T extends (...args: any[]) => any>(
+const createDebouncedFunction = <T extends (...args: any[]) => any>(
   func: T,
   delay: number,
 ): T => {
@@ -20,79 +27,22 @@ const createDebouncer = <T extends (...args: any[]) => any>(
   }) as T;
 };
 
-// Hook for optimized input handling
-export function useOptimizedInputHandlers(
-  updatePreference: (key: keyof PreferencesMap['commanders'], value: number | null) => void,
-) {
-  return useMemo(() => {
-    const debouncedMinEntries = createDebouncer((value: string) => {
-      const numValue = value === '' ? null : parseInt(value, 10);
-      if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-        updatePreference('minEntries' as keyof PreferencesMap['commanders'], numValue);
-      }
-    }, 250);
+const DEFAULT_PREFERENCES = {
+  sortBy: 'TOP' as const,
+  timePeriod: 'ONE_YEAR' as const,
+  minEventSize: null,
+  maxStanding: null,
+} as const;
 
-    const debouncedEventSize = createDebouncer((value: string) => {
-      const numValue = value === '' ? null : parseInt(value, 10);
-      if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-        updatePreference('minTournamentSize' as keyof PreferencesMap['commanders'], numValue);
-      }
-    }, 250);
-
-    const handleMinEntriesChange = (value: string, setLocal: (value: string) => void) => {
-      setLocal(value);
-      debouncedMinEntries(value);
-    };
-
-    const handleMinEntriesSelect = (value: number | null, setLocal: (value: string) => void) => {
-      const stringValue = value?.toString() || '';
-      startTransition(() => setLocal(stringValue));
-      updatePreference('minEntries' as keyof PreferencesMap['commanders'], value);
-    };
-
-    const handleEventSizeChange = (value: string, setLocal: (value: string) => void) => {
-      setLocal(value);
-      debouncedEventSize(value);
-    };
-
-    const handleEventSizeSelect = (value: number | null, setLocal: (value: string) => void) => {
-      const stringValue = value?.toString() || '';
-      startTransition(() => setLocal(stringValue));
-      updatePreference('minTournamentSize' as keyof PreferencesMap['commanders'], value);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === 'Go') {
-        (e.target as HTMLInputElement).blur();
-      }
-    };
-
-    return {
-      handleMinEntriesChange,
-      handleMinEntriesSelect,
-      handleEventSizeChange,
-      handleEventSizeSelect,
-      handleKeyDown,
-    };
-  }, [updatePreference]);
-}
-
-// Main hook for commanders page logic
-export function useCommandersPage(
-  query: any, 
-  fragmentRef: any, 
+export function useCommanderPage(
+  queryRef: PreloadedQuery<useCommanderPage_CommanderQuery>,
   sessionContext?: {
     isAuthenticated: boolean;
     sessionData: any;
     updatePreferences: (prefs: any) => Promise<void>;
   }
 ) {
-  const { preferences, updatePreference, isHydrated } = usePreferences(
-    'commanders',
-    DEFAULT_PREFERENCES.commanders!,
-  );
-
-  // Use passed session context or fallback to hook
+  // Session handling
   const sessionFromHook = useSession();
   const { 
     isAuthenticated, 
@@ -104,39 +54,20 @@ export function useCommandersPage(
     updatePreferences: sessionFromHook.updatePreferences
   };
 
-  const serverPreferences = useMemo(() => {
-    if (typeof window !== 'undefined' && (window as any).__SERVER_PREFERENCES__) {
-      return (window as any).__SERVER_PREFERENCES__;
-    }
-    return null;
-  }, []);
-
-  const { data, loadNext, isLoadingNext, hasNext, refetch } = usePaginationFragment(
-    fragmentRef,
-    query,
+  const { preferences, updatePreference, isHydrated } = usePreferences(
+    'entry',
+    DEFAULT_PREFERENCES,
   );
-
-  // Local state for input values
-  const [localMinEntries, setLocalMinEntries] = useState(
-    () => preferences?.minEntries?.toString() || '',
-  );
-  const [localEventSize, setLocalEventSize] = useState(() =>
-    preferences?.minTournamentSize && preferences?.minTournamentSize > 0
-      ? preferences?.minTournamentSize.toString()
-      : '',
-  );
-
-  const hasRefetchedRef = useRef(false);
 
   // Enhanced update preference that works with both cookies and sessions
   const enhancedUpdatePreference = useCallback(async (
-    key: keyof PreferencesMap['commanders'], 
+    key: keyof PreferencesMap['entry'], 
     value: any
   ) => {
     if (isAuthenticated) {
       // Update session preferences for authenticated users
       await updateSessionPrefs({
-        commanders: { ...preferences, [key]: value }
+        entry: { ...preferences, [key]: value }
       });
     } else {
       // Use existing cookie system for guests
@@ -144,109 +75,298 @@ export function useCommandersPage(
     }
   }, [isAuthenticated, updateSessionPrefs, updatePreference, preferences]);
 
-  const inputHandlers = useOptimizedInputHandlers(enhancedUpdatePreference);
+  const hasRefetchedRef = useRef(false);
 
-  const currentPreferences = useMemo(
+  const serverPreferences = useMemo(() => {
+    if (
+      typeof window !== 'undefined' &&
+      (window as any).__SERVER_PREFERENCES__
+    ) {
+      return (window as any).__SERVER_PREFERENCES__;
+    }
+    return null;
+  }, []);
+
+  const { commander } = usePreloadedQuery(
+    graphql`
+      query useCommanderPage_CommanderQuery(
+        $commander: String!
+        $sortBy: EntriesSortBy!
+        $minEventSize: Int
+        $maxStanding: Int
+        $timePeriod: TimePeriod!
+      ) @preloadable {
+        commander(name: $commander) {
+          name
+          ...commanderPage_CommanderPageShell
+            @arguments(
+              minEventSize: $minEventSize
+              maxStanding: $maxStanding
+              timePeriod: $timePeriod
+            )
+          ...useCommanderPage_entries
+            @arguments(
+              minEventSize: $minEventSize
+              maxStanding: $maxStanding
+              timePeriod: $timePeriod
+            )
+        }
+      }
+    `,
+    queryRef,
+  );
+
+  const { data, loadNext, isLoadingNext, hasNext, refetch } =
+    usePaginationFragment<CommanderEntriesQuery, useCommanderPage_entries$key>(
+      graphql`
+        fragment useCommanderPage_entries on Commander
+        @argumentDefinitions(
+          cursor: {type: "String"}
+          count: {type: "Int", defaultValue: 48}
+          minEventSize: {type: "Int"}
+          maxStanding: {type: "Int"}
+          timePeriod: {type: "TimePeriod!"}
+        )
+        @refetchable(queryName: "CommanderEntriesQuery") {
+          # Add filteredStats to this fragment so it gets refetched
+          filteredStats(
+            minEventSize: $minEventSize
+            maxStanding: $maxStanding
+            timePeriod: $timePeriod
+          ) {
+            conversionRate
+            topCuts
+            count
+            metaShare
+            topCutBias
+          }
+
+          entries(
+            first: $count
+            after: $cursor
+            sortBy: $sortBy
+            filters: {
+              minEventSize: $minEventSize
+              maxStanding: $maxStanding
+              timePeriod: $timePeriod
+            }
+          ) @connection(key: "Commander_entries") {
+            edges {
+              node {
+                id
+                ...commanderPage_EntryCard
+              }
+            }
+          }
+        }
+      `,
+      commander,
+    );
+
+  const refetchParams = useMemo(
     () => ({
-      sortBy: preferences?.sortBy || ('CONVERSION' as const),
-      timePeriod: preferences?.timePeriod || ('ONE_MONTH' as const),
-      colorId: preferences?.colorId || '',
-      minEntries: preferences?.minEntries || null,
-      minTournamentSize: preferences?.minTournamentSize || null,
-      display: preferences?.display || ('card' as const),
+      sortBy: preferences?.sortBy || DEFAULT_PREFERENCES.sortBy,
+      timePeriod: preferences?.timePeriod || DEFAULT_PREFERENCES.timePeriod,
+      minEventSize: preferences?.minEventSize || undefined,
+      maxStanding: preferences?.maxStanding || undefined,
     }),
     [preferences],
   );
 
-  const secondaryStatistic = useMemo(
-    () => currentPreferences.sortBy === 'CONVERSION' ? ('topCuts' as const) : ('count' as const),
-    [currentPreferences.sortBy],
+  const handleRefetch = useCallback(() => {
+    // Add safety check before refetching
+    if (!commander) {
+      console.log('⚠️ [COMMANDER_PAGE] Cannot refetch: commander is null');
+      return;
+    }
+    
+    console.log('🔄 [COMMANDER_PAGE] Refetch triggered by preferences change');
+    startTransition(() => {
+      refetch(refetchParams, {fetchPolicy: 'network-only'});
+    });
+  }, [refetch, refetchParams, commander]);
+
+  const handleLoadMore = useCallback(
+    (count: number) => {
+      startTransition(() => {
+        loadNext(count);
+      });
+    },
+    [loadNext],
   );
 
+  // Debounced input handlers
+  const debouncedUpdaters = useMemo(
+    () => ({
+      eventSize: createDebouncedFunction((value: string) => {
+        const numValue = value === '' ? null : parseInt(value, 10);
+        if (numValue === null || (!isNaN(numValue) && numValue >= 0)) {
+          enhancedUpdatePreference(
+            'minEventSize' as keyof PreferencesMap['entry'],
+            numValue,
+          );
+        }
+      }, 250),
+      maxStanding: createDebouncedFunction((value: string) => {
+        const numValue = value === '' ? null : parseInt(value, 10);
+        if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
+          enhancedUpdatePreference(
+            'maxStanding' as keyof PreferencesMap['entry'],
+            numValue,
+          );
+        }
+      }, 250),
+    }),
+    [enhancedUpdatePreference],
+  );
+
+  // Local state for input values
+  const [localEventSize, setLocalEventSize] = useState('');
+  const [localMaxStanding, setLocalMaxStanding] = useState('');
+
+  // Update local state when preferences change
+  useEffect(() => {
+    setLocalEventSize(preferences?.minEventSize?.toString() || '');
+    setLocalMaxStanding(preferences?.maxStanding?.toString() || '');
+  }, [preferences?.minEventSize, preferences?.maxStanding]);
+
   // Event handlers
-  const handleRefetch = useCallback(() => {
-    console.log('🔄 [COMMANDERS] Refetch triggered by preferences change');
-    startTransition(() => {
-      refetch({}, { fetchPolicy: 'network-only' });
-    });
-  }, [refetch]);
+  const handleSortBySelect = useCallback(
+    (value: EntriesSortBy) => {
+      enhancedUpdatePreference('sortBy' as keyof PreferencesMap['entry'], value);
+    },
+    [enhancedUpdatePreference],
+  );
 
-  const handleLoadMore = useCallback((count: number) => {
-    startTransition(() => {
-      loadNext(count);
-    });
-  }, [loadNext]);
+  const handleTimePeriodSelect = useCallback(
+    (value: string) => {
+      enhancedUpdatePreference('timePeriod' as keyof PreferencesMap['entry'], value);
+    },
+    [enhancedUpdatePreference],
+  );
 
-  const handleDisplayToggle = useCallback(() => {
-    enhancedUpdatePreference(
-      'display' as keyof PreferencesMap['commanders'],
-      currentPreferences.display === 'table' ? 'card' : 'table',
-    );
-  }, [enhancedUpdatePreference, currentPreferences.display]);
+  const handleEventSizeChange = useCallback(
+    (value: string) => {
+      setLocalEventSize(value);
+      debouncedUpdaters.eventSize(value);
+    },
+    [debouncedUpdaters],
+  );
 
-  const handleSortByChange = useCallback((value: 'CONVERSION' | 'POPULARITY') => {
-    enhancedUpdatePreference('sortBy' as keyof PreferencesMap['commanders'], value);
-  }, [enhancedUpdatePreference]);
+  const handleEventSizeSelect = useCallback(
+    (value: number | null) => {
+      const stringValue = value?.toString() || '';
+      startTransition(() => {
+        setLocalEventSize(stringValue);
+      });
+      enhancedUpdatePreference('minEventSize' as keyof PreferencesMap['entry'], value);
+    },
+    [enhancedUpdatePreference],
+  );
 
-  const handleTimePeriodChange = useCallback((value: any) => {
-    enhancedUpdatePreference('timePeriod' as keyof PreferencesMap['commanders'], value);
-  }, [enhancedUpdatePreference]);
+  const handleMaxStandingChange = useCallback(
+    (value: string) => {
+      setLocalMaxStanding(value);
+      debouncedUpdaters.maxStanding(value);
+    },
+    [debouncedUpdaters],
+  );
 
-  const handleColorChange = useCallback((value: string) => {
-    enhancedUpdatePreference('colorId' as keyof PreferencesMap['commanders'], value);
-  }, [enhancedUpdatePreference]);
+  const handleMaxStandingSelect = useCallback(
+    (value: number | null) => {
+      const stringValue = value?.toString() || '';
+      startTransition(() => {
+        setLocalMaxStanding(stringValue);
+      });
+      enhancedUpdatePreference('maxStanding' as keyof PreferencesMap['entry'], value);
+    },
+    [enhancedUpdatePreference],
+  );
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === 'Go') {
+      (e.target as HTMLInputElement).blur();
+    }
+  }, []);
+
+  // Computed values
+  const shellPreferences = useMemo(
+    () => ({
+      maxStanding: preferences?.maxStanding || null,
+      minEventSize: preferences?.minEventSize || null,
+      sortBy: preferences?.sortBy || DEFAULT_PREFERENCES.sortBy,
+      timePeriod: preferences?.timePeriod || DEFAULT_PREFERENCES.timePeriod,
+    }),
+    [preferences],
+  );
+
+  const entryCards = useMemo(
+    () => {
+      if (!data?.entries?.edges) {
+        return [];
+      }
+      return data.entries.edges.map(({node}) => node);
+    },
+    [data?.entries?.edges],
+  );
 
   // Effects
-  useEffect(() => {
-    setLocalMinEntries(preferences?.minEntries?.toString() || '');
-  }, [preferences?.minEntries]);
-
-  useEffect(() => {
-    setLocalEventSize(
-      preferences?.minTournamentSize && preferences?.minTournamentSize > 0
-        ? preferences?.minTournamentSize.toString()
-        : '',
-    );
-  }, [preferences?.minTournamentSize]);
-
   useEffect(() => {
     setRefetchCallback(handleRefetch);
     return clearRefetchCallback;
   }, [handleRefetch]);
 
   useEffect(() => {
-    if (isHydrated && !hasRefetchedRef.current) {
+    if (isHydrated && !hasRefetchedRef.current && commander) {
       hasRefetchedRef.current = true;
-      const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES.commanders;
-      const prefsMatch = JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
 
-      console.log('🍪 [COMMANDERS] Hydration complete:', {
+      const actualServerPrefs = serverPreferences || DEFAULT_PREFERENCES;
+      const prefsMatch =
+        JSON.stringify(preferences) === JSON.stringify(actualServerPrefs);
+
+      console.log('🍪 [COMMANDER_PAGE] Hydration complete:', {
         clientPrefs: preferences,
         serverPrefs: actualServerPrefs,
         needsRefetch: !prefsMatch,
         isAuthenticated,
+        commanderExists: !!commander,
       });
+
+      if (!prefsMatch) {
+        // Add delay to avoid conflicts with other hydration
+        setTimeout(() => {
+          handleRefetch();
+        }, 200);
+      }
     }
-  }, [isHydrated, preferences, serverPreferences, isAuthenticated]);
+  }, [isHydrated, preferences, serverPreferences, handleRefetch, isAuthenticated, commander]);
 
   return {
+    // Data
+    commander,
     data,
-    currentPreferences,
-    secondaryStatistic,
-    localMinEntries,
-    setLocalMinEntries,
+    entryCards,
+    
+    // State
+    shellPreferences,
     localEventSize,
-    setLocalEventSize,
-    inputHandlers,
+    localMaxStanding,
     hasNext,
     isLoadingNext,
     isAuthenticated,
     
     // Event handlers
-    handleDisplayToggle,
-    handleSortByChange,
-    handleTimePeriodChange,
-    handleColorChange,
+    handleSortBySelect,
+    handleTimePeriodSelect,
+    handleEventSizeChange,
+    handleEventSizeSelect,
+    handleMaxStandingChange,
+    handleMaxStandingSelect,
+    handleKeyDown,
     handleLoadMore,
+    
+    // Functions
+    updatePreference: enhancedUpdatePreference,
+    preferences,
   };
 }

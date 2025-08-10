@@ -1,4 +1,4 @@
-import CommanderQueryParameters from '#genfiles/queries/Commander_CommanderQuery$parameters';
+import CommanderPageQuery from '#genfiles/queries/useCommanderPage_CommanderQuery$parameters';
 import {JSResource, ModuleType} from '#genfiles/river/js_resource';
 import {EntryPointParams} from '#genfiles/river/router';
 import {EntryPoint} from 'react-relay/hooks';
@@ -18,7 +18,7 @@ export const entrypoint: EntryPoint<
     return {
       queries: {
         commanderQueryRef: {
-          parameters: CommanderQueryParameters,
+          parameters: CommanderPageQuery,
           variables: {
             commander,
             sortBy: 'TOP',

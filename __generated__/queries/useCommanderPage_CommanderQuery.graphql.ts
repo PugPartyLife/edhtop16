@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<4932334f1417bcc460e163be9b6e70c5>>
- * @relayHash 212f7915acfacd5df828faac7368d6b6
+ * @generated SignedSource<<d24e9a6424fda9e24819a89ac5fcfd79>>
+ * @relayHash d1dee7e37c718427505e65b93806db8c
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,28 +9,28 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 212f7915acfacd5df828faac7368d6b6
+// @relayRequestID d1dee7e37c718427505e65b93806db8c
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type EntriesSortBy = "NEW" | "TOP" | "%future added value";
 export type TimePeriod = "ALL_TIME" | "ONE_MONTH" | "ONE_YEAR" | "POST_BAN" | "SIX_MONTHS" | "THREE_MONTHS" | "%future added value";
-export type Commander_CommanderQuery$variables = {
+export type useCommanderPage_CommanderQuery$variables = {
   commander: string;
   maxStanding?: number | null | undefined;
   minEventSize?: number | null | undefined;
   sortBy: EntriesSortBy;
   timePeriod: TimePeriod;
 };
-export type Commander_CommanderQuery$data = {
+export type useCommanderPage_CommanderQuery$data = {
   readonly commander: {
     readonly name: string;
-    readonly " $fragmentSpreads": FragmentRefs<"Commander_CommanderPageShell" | "Commander_entries">;
+    readonly " $fragmentSpreads": FragmentRefs<"commanderPage_CommanderPageShell" | "useCommanderPage_entries">;
   };
 };
-export type Commander_CommanderQuery = {
-  response: Commander_CommanderQuery$data;
-  variables: Commander_CommanderQuery$variables;
+export type useCommanderPage_CommanderQuery = {
+  response: useCommanderPage_CommanderQuery$data;
+  variables: useCommanderPage_CommanderQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -162,7 +162,7 @@ return {
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "Commander_CommanderQuery",
+    "name": "useCommanderPage_CommanderQuery",
     "selections": [
       {
         "alias": null,
@@ -176,12 +176,12 @@ return {
           {
             "args": (v7/*: any*/),
             "kind": "FragmentSpread",
-            "name": "Commander_CommanderPageShell"
+            "name": "commanderPage_CommanderPageShell"
           },
           {
             "args": (v7/*: any*/),
             "kind": "FragmentSpread",
-            "name": "Commander_entries"
+            "name": "useCommanderPage_entries"
           }
         ],
         "storageKey": null
@@ -200,7 +200,7 @@ return {
       (v4/*: any*/)
     ],
     "kind": "Operation",
-    "name": "Commander_CommanderQuery",
+    "name": "useCommanderPage_CommanderQuery",
     "selections": [
       {
         "alias": null,
@@ -498,16 +498,16 @@ return {
     ]
   },
   "params": {
-    "id": "212f7915acfacd5df828faac7368d6b6",
+    "id": "d1dee7e37c718427505e65b93806db8c",
     "metadata": {},
-    "name": "Commander_CommanderQuery",
+    "name": "useCommanderPage_CommanderQuery",
     "operationKind": "query",
     "text": null
   }
 };
 })();
 
-(node as any).hash = "48b4522029f6bad9de2bbc5cd1fdc8d8";
+(node as any).hash = "dc1664068776389cf6cf3cfc6e3e867b";
 
 import { PreloadableQueryRegistry } from 'relay-runtime';
 PreloadableQueryRegistry.set(node.params.id, node);
