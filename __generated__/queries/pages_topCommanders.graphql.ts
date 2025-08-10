@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dde34331637ac2e280988acdcdf4d1b6>>
+ * @generated SignedSource<<12783dc7e62d6e72b79cc3c52ef7651e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,7 @@ export type pages_topCommanders$data = {
     readonly edges: ReadonlyArray<{
       readonly node: {
         readonly id: string;
-        readonly " $fragmentSpreads": FragmentRefs<"pages_TopCommandersCard">;
+        readonly " $fragmentSpreads": FragmentRefs<"commandersPage_TopCommandersCard">;
       };
     }>;
   };
@@ -104,7 +104,7 @@ return {
                 {
                   "args": null,
                   "kind": "FragmentSpread",
-                  "name": "pages_TopCommandersCard"
+                  "name": "commandersPage_TopCommandersCard"
                 },
                 {
                   "alias": null,
@@ -160,6 +160,6 @@ return {
 };
 })();
 
-(node as any).hash = "7196d3105a6fcc24d00413bb7af341ad";
+(node as any).hash = "fabfb58c5079b811ae060a527f1b7583";
 
 export default node;

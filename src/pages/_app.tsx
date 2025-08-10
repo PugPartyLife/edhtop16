@@ -1,5 +1,22 @@
 import {useHead} from '@unhead/react';
-import {PropsWithChildren} from 'react';
+import {PropsWithChildren, useEffect} from 'react';
+import { useSession } from '../lib/client/use_session';
+
+function SessionInitializer() {
+  const { sessionData } = useSession();
+
+  useEffect(() => {
+    // Session hydration happens automatically in the useSession hook
+    // This component just ensures the hook is called at the app level
+    console.log('App session initialized:', {
+      isAuthenticated: sessionData.isAuthenticated,
+      userId: sessionData.userId,
+      hasPreferences: Object.keys(sessionData.preferences).length > 0
+    });
+  }, [sessionData]);
+
+  return null; // This component doesn't render anything
+}
 
 export function App({children}: PropsWithChildren<{}>) {
   useHead({
@@ -20,5 +37,10 @@ export function App({children}: PropsWithChildren<{}>) {
     ],
   });
 
-  return <main className="relative min-h-screen bg-[#514f86]">{children}</main>;
+  return (
+    <main className="relative min-h-screen bg-[#514f86]">
+      <SessionInitializer />
+      {children}
+    </main>
+  );
 }
