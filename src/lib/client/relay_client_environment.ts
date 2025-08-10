@@ -53,7 +53,10 @@ class SessionRegistry {
   }
 
   private notifyListeners() {
-    this.listeners.forEach(listener => listener(this.data));
+    // Defer notifications to avoid setState during render
+    Promise.resolve().then(() => {
+      this.listeners.forEach(listener => listener(this.data));
+    });
   }
 
   // Server-side session preference updates (in addition to cookies)
@@ -162,8 +165,10 @@ export function getClientEnvironment() {
 export function updateRelayPreferences(prefs: Partial<PreferencesMap>) {
   currentPreferences = {...currentPreferences, ...prefs};
   
-  // Also update session registry for consistency
-  sessionRegistry.set({ preferences: currentPreferences });
+  // Defer session registry update to avoid setState during render
+  Promise.resolve().then(() => {
+    sessionRegistry.set({ preferences: currentPreferences });
+  });
 }
 
 export function getRelayPreferences(): PreferencesMap {
