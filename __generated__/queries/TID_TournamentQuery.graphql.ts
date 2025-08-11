@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<46381e7d2dc4f38625c490f30bb04d4c>>
- * @relayHash 00ff8482d58f2750e72dcfc8b9880052
+ * @generated SignedSource<<87da80c78c24f1f2c418e28eb576a880>>
+ * @relayHash f18dc3cf10ce8e994bea4f1adddb34db
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 00ff8482d58f2750e72dcfc8b9880052
+// @relayRequestID f18dc3cf10ce8e994bea4f1adddb34db
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
@@ -26,17 +26,17 @@ export type TID_TournamentQuery$data = {
       readonly commander: {
         readonly id: string;
       };
-      readonly " $fragmentSpreads": FragmentRefs<"TID_BreakdownGroupCard">;
+      readonly " $fragmentSpreads": FragmentRefs<"tournamentPage_BreakdownGroupCard">;
     }>;
     readonly breakdownEntries?: ReadonlyArray<{
       readonly id: string;
-      readonly " $fragmentSpreads": FragmentRefs<"TID_EntryCard">;
+      readonly " $fragmentSpreads": FragmentRefs<"tournamentPage_EntryCard">;
     }>;
     readonly entries?: ReadonlyArray<{
       readonly id: string;
-      readonly " $fragmentSpreads": FragmentRefs<"TID_EntryCard">;
+      readonly " $fragmentSpreads": FragmentRefs<"tournamentPage_EntryCard">;
     }>;
-    readonly " $fragmentSpreads": FragmentRefs<"TID_TournamentPageShell">;
+    readonly " $fragmentSpreads": FragmentRefs<"tournamentPage_TournamentPageShell">;
   };
 };
 export type TID_TournamentQuery = {
@@ -89,7 +89,7 @@ v7 = [
   {
     "args": null,
     "kind": "FragmentSpread",
-    "name": "TID_EntryCard"
+    "name": "tournamentPage_EntryCard"
   }
 ],
 v8 = [
@@ -229,7 +229,7 @@ return {
           {
             "args": null,
             "kind": "FragmentSpread",
-            "name": "TID_TournamentPageShell"
+            "name": "tournamentPage_TournamentPageShell"
           },
           {
             "condition": "showStandings",
@@ -276,7 +276,7 @@ return {
                   {
                     "args": null,
                     "kind": "FragmentSpread",
-                    "name": "TID_BreakdownGroupCard"
+                    "name": "tournamentPage_BreakdownGroupCard"
                   }
                 ],
                 "storageKey": null
@@ -542,7 +542,7 @@ return {
     ]
   },
   "params": {
-    "id": "00ff8482d58f2750e72dcfc8b9880052",
+    "id": "f18dc3cf10ce8e994bea4f1adddb34db",
     "metadata": {},
     "name": "TID_TournamentQuery",
     "operationKind": "query",
@@ -551,7 +551,7 @@ return {
 };
 })();
 
-(node as any).hash = "daee1052822b0b2739ff540983b49914";
+(node as any).hash = "9e89ae3f3e38db2f5518fee09c869180";
 
 import { PreloadableQueryRegistry } from 'relay-runtime';
 PreloadableQueryRegistry.set(node.params.id, node);
