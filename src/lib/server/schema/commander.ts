@@ -12,6 +12,7 @@ import {Card} from './card';
 import {Entry} from './entry';
 import {FirstPartyPromoRef, getActivePromotions} from './promo';
 import {minDateFromTimePeriod, TimePeriod, type TimePeriodType} from './types';
+import {safeDivision, safeNumber} from '../../utils';
 
 const queryCache = new Map<string, {data: any; timestamp: number}>();
 const CACHE_TTL = 60000; // 1 minute
@@ -140,7 +141,12 @@ Commander.implement({
                     eb(
                       eb.cast(eb.ref('Tournament.topCut'), 'real'),
                       '/',
-                      eb.cast(eb.ref('Tournament.size'), 'real'),
+                      // Add null check in SQL to prevent division by zero
+                      eb.case()
+                        .when(eb.ref('Tournament.size'), '>', 0)
+                        .then(eb.cast(eb.ref('Tournament.size'), 'real'))
+                        .else(1)
+                        .end(),
                     ),
                   )
                   .as('topCutBias'),
@@ -155,26 +161,30 @@ Commander.implement({
                       .end(),
                   )
                   .as('topCuts'),
+              // Safe conversion rate calculation in SQL
               (eb) =>
-                eb(
-                  eb.cast<number>(
-                    eb.fn.sum<number>(
-                      eb
-                        .case()
-                        .when(
-                          'Entry.standing',
-                          '<=',
-                          eb.ref('Tournament.topCut'),
-                        )
-                        .then(1)
-                        .else(0)
-                        .end(),
-                    ),
-                    'real',
-                  ),
-                  '/',
-                  eb.fn.count<number>('Entry.id'),
-                ).as('conversionRate'),
+                eb.case()
+                  .when(eb.fn.count<number>('Entry.id'), '>', 0)
+                  .then(
+                    eb(
+                      eb.cast<number>(
+                        eb.fn.sum<number>(
+                          eb
+                            .case()
+                            .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
+                            .then(1)
+                            .else(0)
+                            .end(),
+                        ),
+                        'real',
+                      ),
+                      '/',
+                      eb.fn.count<number>('Entry.id'),
+                    )
+                  )
+                  .else(0)
+                  .end()
+                  .as('conversionRate'),
             ])
             .where('Tournament.size', '>=', minTournamentSizeValue)
             .where('Tournament.tournamentDate', '>=', minDate.toISOString())
@@ -183,23 +193,21 @@ Commander.implement({
             .execute(),
         ]);
 
-        const totalEntries = entriesQuery.totalEntries ?? 1;
+        const totalEntries = safeNumber(entriesQuery.totalEntries, 1);
         const statsByCommanderId = new Map<number, CommanderCalculatedStats>();
+        
         for (const {id, ...stats} of statsQuery) {
-          let metaShare = 0;
-          
-          // Only calculate if we have valid data
-          if (totalEntries > 0 && typeof stats.count === 'number' && stats.count >= 0) {
-            metaShare = stats.count / totalEntries;
-            
-            // Double-check for NaN and handle edge cases
-            if (isNaN(metaShare) || !isFinite(metaShare)) {
-              metaShare = 0;
-            }
-          }
+          const count = safeNumber(stats.count, 0);
+          const topCuts = safeNumber(stats.topCuts, 0);
+          const topCutBias = safeNumber(stats.topCutBias, 0);
+          const conversionRate = safeDivision(topCuts, count);
+          const metaShare = safeDivision(count, totalEntries);
           
           statsByCommanderId.set(id, {
-            ...stats,
+            count,
+            topCuts,
+            topCutBias,
+            conversionRate,
             metaShare,
           });
         }
@@ -262,7 +270,11 @@ Commander.implement({
                     eb(
                       eb.cast(eb.ref('Tournament.topCut'), 'real'),
                       '/',
-                      eb.cast(eb.ref('Tournament.size'), 'real'),
+                      eb.case()
+                        .when(eb.ref('Tournament.size'), '>', 0)
+                        .then(eb.cast(eb.ref('Tournament.size'), 'real'))
+                        .else(1)
+                        .end(),
                     ),
                   )
                   .as('topCutBias'),
@@ -277,26 +289,30 @@ Commander.implement({
                       .end(),
                   )
                   .as('topCuts'),
+              // Safe conversion rate in SQL
               (eb) =>
-                eb(
-                  eb.cast<number>(
-                    eb.fn.sum<number>(
-                      eb
-                        .case()
-                        .when(
-                          'Entry.standing',
-                          '<=',
-                          eb.ref('Tournament.topCut'),
-                        )
-                        .then(1)
-                        .else(0)
-                        .end(),
-                    ),
-                    'real',
-                  ),
-                  '/',
-                  eb.fn.count<number>('Entry.id'),
-                ).as('conversionRate'),
+                eb.case()
+                  .when(eb.fn.count<number>('Entry.id'), '>', 0)
+                  .then(
+                    eb(
+                      eb.cast<number>(
+                        eb.fn.sum<number>(
+                          eb
+                            .case()
+                            .when('Entry.standing', '<=', eb.ref('Tournament.topCut'))
+                            .then(1)
+                            .else(0)
+                            .end(),
+                        ),
+                        'real',
+                      ),
+                      '/',
+                      eb.fn.count<number>('Entry.id'),
+                    )
+                  )
+                  .else(0)
+                  .end()
+                  .as('conversionRate'),
             ])
             .where('Entry.commanderId', '=', parent.id)
             .where('Tournament.size', '>=', minEventSize)
@@ -305,7 +321,7 @@ Commander.implement({
             .executeTakeFirst(),
         ]);
 
-        const totalEntries = entriesQuery.totalEntries ?? 1;
+        const totalEntries = safeNumber(entriesQuery.totalEntries, 1);
         const stats = statsQuery ?? {
           count: 0,
           topCuts: 0,
@@ -313,27 +329,19 @@ Commander.implement({
           conversionRate: 0,
         };
 
-        // Safe calculation for metaShare to prevent NaN
-        let metaShare = 0;
-        if (totalEntries > 0 && typeof stats.count === 'number' && stats.count >= 0) {
-          metaShare = stats.count / totalEntries;
-          
-          // Double-check for NaN and handle edge cases
-          if (isNaN(metaShare) || !isFinite(metaShare)) {
-            metaShare = 0;
-          }
-        }
+        const count = safeNumber(stats.count, 0);
+        const topCuts = safeNumber(stats.topCuts, 0);
+        const topCutBias = safeNumber(stats.topCutBias, 0);
+        const conversionRate = safeDivision(topCuts, count);
+        const metaShare = safeDivision(count, totalEntries);
 
-        // Also ensure other stats are safe numbers
-        const result = {
-          count: stats.count || 0,
-          topCuts: stats.topCuts || 0,
-          topCutBias: isNaN(stats.topCutBias) || !isFinite(stats.topCutBias) ? 0 : (stats.topCutBias || 0),
-          conversionRate: isNaN(stats.conversionRate) || !isFinite(stats.conversionRate) ? 0 : (stats.conversionRate || 0),
+        return {
+          count,
+          topCuts,
+          topCutBias,
+          conversionRate,
           metaShare,
         };
-
-        return result;
       },
     }),
 
@@ -411,6 +419,8 @@ Commander.implement({
             .where('Tournament.tournamentDate', '>=', oneYearAgo)
             .executeTakeFirstOrThrow();
 
+          const safeTotalEntries = safeNumber(totalEntries, 1);
+
           const query = db
             .with('entries', (eb) => {
               return eb
@@ -423,11 +433,19 @@ Commander.implement({
                 .groupBy('Card.id')
                 .select((eb) => [
                   eb.ref('Card.id').as('cardId'),
-                  eb(
-                    eb.cast(eb.fn.count<number>('Card.id'), 'real'),
-                    '/',
-                    totalEntries,
-                  ).as('playRateLastYear'),
+                  // Safe division for play rate using literal value
+                  eb.case()
+                    .when(sql.lit(safeTotalEntries), '>', 0)
+                    .then(
+                      eb(
+                        eb.cast(eb.fn.count<number>('Card.id'), 'real'),
+                        '/',
+                        sql.lit(safeTotalEntries),
+                      )
+                    )
+                    .else(0)
+                    .end()
+                    .as('playRateLastYear'),
                 ]);
             })
             .selectFrom('Card')
@@ -442,9 +460,9 @@ Commander.implement({
             .orderBy(
               (eb) =>
                 eb(
-                  'entries.playRateLastYear',
+                  eb.fn.coalesce('entries.playRateLastYear', sql`0`),
                   '-',
-                  eb.ref('Card.playRateLastYear'),
+                  eb.fn.coalesce(eb.ref('Card.playRateLastYear'), sql`0`),
                 ),
               'desc',
             )
@@ -663,10 +681,20 @@ const CommanderStats = builder
   .objectRef<CommanderCalculatedStats>('CommanderStats')
   .implement({
     fields: (t) => ({
-      count: t.exposeInt('count'),
-      topCuts: t.exposeInt('topCuts'),
-      topCutBias: t.exposeFloat('topCutBias'),
-      conversionRate: t.exposeFloat('conversionRate'),
-      metaShare: t.exposeFloat('metaShare'),
+      count: t.int({
+        resolve: (parent) => safeNumber(parent.count, 0),
+      }),
+      topCuts: t.int({
+        resolve: (parent) => safeNumber(parent.topCuts, 0),
+      }),
+      topCutBias: t.float({
+        resolve: (parent) => safeNumber(parent.topCutBias, 0),
+      }),
+      conversionRate: t.float({
+        resolve: (parent) => safeDivision(safeNumber(parent.topCuts), safeNumber(parent.count)),
+      }),
+      metaShare: t.float({
+        resolve: (parent) => safeNumber(parent.metaShare, 0),
+      }),
     }),
   });

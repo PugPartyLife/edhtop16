@@ -5,6 +5,7 @@ import {Commander} from './commander';
 import {Player} from './player';
 import {Tournament} from './tournament';
 import {TopdeckTournamentTableType} from './types';
+import {safeDivision, safeNumber} from '../../utils';
 
 export const EntryFilters = builder.inputType('EntryFilters', {
   fields: (t) => ({
@@ -75,20 +76,21 @@ Entry.implement({
       },
     }),
     wins: t.int({
-      resolve: (parent) => parent.winsBracket + parent.winsSwiss,
+      resolve: (parent) => safeNumber(parent.winsBracket, 0) + safeNumber(parent.winsSwiss, 0),
     }),
     losses: t.int({
-      resolve: (parent) => parent.lossesBracket + parent.lossesSwiss,
+      resolve: (parent) => safeNumber(parent.lossesBracket, 0) + safeNumber(parent.lossesSwiss, 0),
     }),
     winRate: t.float({
       nullable: true,
       resolve: (parent) => {
-        const wins = parent.winsBracket + parent.winsSwiss;
-        const games =
-          wins + parent.lossesBracket + parent.lossesSwiss + parent.draws;
+        const wins = safeNumber(parent.winsBracket, 0) + safeNumber(parent.winsSwiss, 0);
+        const losses = safeNumber(parent.lossesBracket, 0) + safeNumber(parent.lossesSwiss, 0);
+        const draws = safeNumber(parent.draws, 0);
+        const games = wins + losses + draws;
 
         if (games === 0) return null;
-        return wins / games;
+        return safeDivision(wins, games);
       },
     }),
     tables: t.field({

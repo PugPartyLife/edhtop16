@@ -13,6 +13,7 @@ import {
   TopdeckTournamentTableType,
   TournamentBreakdownGroupType,
 } from './types';
+import {safeDivision, safeNumber} from '../../utils';
 
 TopdeckTournamentTableType.implement({
   fields: (t) => ({
@@ -99,7 +100,12 @@ TournamentBreakdownGroupType.implement({
   fields: (t) => ({
     topCuts: t.exposeInt('topCuts'),
     entries: t.exposeInt('entries'),
-    conversionRate: t.exposeFloat('conversionRate'),
+    conversionRate: t.float({
+      resolve: (parent) => {
+        // Ensure safe conversion rate calculation
+        return safeDivision(safeNumber(parent.topCuts), safeNumber(parent.entries));
+      },
+    }),
     commander: t.field({
       type: Commander,
       resolve: (parent, _args, ctx) => {
@@ -182,17 +188,24 @@ Tournament.implement({
             e."commanderId",
             count(e."commanderId") as entries,
             sum(case when e.standing <= t."topCut" then 1 else 0 end) as "topCuts",
-            sum(case when e.standing <= t."topCut" then 1.0 else 0.0 end) / count(e.id) as "conversionRate"
+            case 
+              when count(e.id) = 0 then 0
+              else sum(case when e.standing <= t."topCut" then 1.0 else 0.0 end) / count(e.id)
+            end as "conversionRate"
           from "Entry" as e
           left join "Tournament" t on t.id = e."tournamentId"
           left join "Commander" c on c.id = e."commanderId"
           where t."id" = ${parent.id}
           and c.name != 'Unknown Commander'
           group by e."commanderId"
+          having count(e.id) > 0
           order by "topCuts" desc, entries desc
         `.execute(db);
 
-        return groups.rows;
+        return groups.rows.map(row => ({
+          ...row,
+          conversionRate: safeDivision(safeNumber(row.topCuts), safeNumber(row.entries))
+        }));
       },
     }),
     promo: t.field({
