@@ -46,11 +46,24 @@ export interface TournamentsPreferences {
   minSize?: number;
 }
 
+// NEW: Cards preferences interface
+export interface CardsPreferences {
+  category?: string | null;
+  function?: string | null;
+  colors?: string[] | null;
+  types?: string[] | null;
+  minConfidence?: number;
+  minCmc?: number | null;
+  maxCmc?: number | null;
+  contextDependent?: boolean | undefined;
+}
+
 export type PreferencesMap = {
   commanders?: CommandersPreferences;
   entry?: EntryPreferences;
   tournament?: TournamentPreferences;
   tournaments?: TournamentsPreferences;
+  cards?: CardsPreferences; // NEW: Add cards to the preferences map
 };
 
 export const DEFAULT_PREFERENCES: PreferencesMap = {
@@ -76,6 +89,17 @@ export const DEFAULT_PREFERENCES: PreferencesMap = {
     sortBy: 'DATE',
     timePeriod: 'ALL_TIME',
     minSize: 0,
+  },
+  // NEW: Default cards preferences
+  cards: {
+    category: null,
+    function: null,
+    colors: null,
+    types: null,
+    minConfidence: 0.5,
+    minCmc: null,
+    maxCmc: null,
+    contextDependent: undefined,
   },
 };
 
@@ -205,3 +229,4 @@ export function usePreferences<K extends keyof PreferencesMap>(
 // const {preferences, updatePreference} = usePreferences('entry', DEFAULT_PREFERENCES.entry);
 // const {preferences, updatePreference} = usePreferences('tournament', DEFAULT_PREFERENCES.tournament);
 // const {preferences, updatePreference} = usePreferences('tournaments', DEFAULT_PREFERENCES.tournaments);
+// const {preferences, updatePreference} = usePreferences('cards', DEFAULT_PREFERENCES.cards); // NEW
