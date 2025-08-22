@@ -28,7 +28,7 @@ import {LoadMoreButton} from '../components/load_more';
 import {Navigation} from '../components/navigation';
 import {Select} from '../components/select';
 import {formatPercent} from '../lib/client/format';
-import {usePreferences, DEFAULT_PREFERENCES} from '../lib/client/cookies';
+import {usePreferences, clearAllPreferences, DEFAULT_PREFERENCES} from '../lib/client/cookies';
 import {CommandersPreferences} from '../lib/shared/preferences-types';
 
 // Optimize with scheduler to prevent blocking
@@ -232,7 +232,7 @@ const CommandersPageShell = React.memo(
       description: 'Discover top performing commanders in cEDH!',
     });
 
-    // Wrap all updates in transitions to prevent blocking
+    // Enhanced update handlers that work with your existing pattern
     const updateWithTransition = useCallback(
       <P extends keyof CommandersPreferences>(
         key: P,
@@ -421,11 +421,41 @@ export const CommandersPage: EntryPointComponent<
     queries.commandersQueryRef,
   );
 
+  // Enhanced usePreferences with smart hydration
   const {
     preferences: commanderPrefs,
     updatePreference,
     isHydrated,
-  } = usePreferences('commanders', DEFAULT_PREFERENCES.commanders!);
+    hydrationState,
+  } = usePreferences('commanders', DEFAULT_PREFERENCES.commanders!, {
+    enableSmartHydration: true,
+    onHydrationMismatch: (diff) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CommandersPage] Hydration mismatch detected:', diff);
+      }
+      
+      // Optional: Track analytics
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'hydration_mismatch', {
+          changed_keys: diff.changedKeys.join(','),
+          page: 'commanders',
+        });
+      }
+    },
+    onHydrationComplete: (result) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CommandersPage] Hydration complete:', result);
+      }
+      
+      // Optional: Track performance
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'hydration_complete', {
+          result,
+          page: 'commanders',
+        });
+      }
+    },
+  });
 
   const {data, loadNext, isLoadingNext, hasNext, refetch} =
     usePaginationFragment<TopCommandersQuery, pages_topCommanders$key>(
@@ -457,7 +487,7 @@ export const CommandersPage: EntryPointComponent<
       query,
     );
 
-  // More aggressive debouncing for better INP
+  // Enhanced debounced refetch that works with your existing pattern
   const debouncedRefetch = React.useMemo(() => {
     let timeoutId: NodeJS.Timeout;
     return (variables: any) => {
@@ -470,11 +500,14 @@ export const CommandersPage: EntryPointComponent<
     };
   }, [refetch]);
 
-  // Set up refetch callback to trigger when preferences change
+  // Your existing refetch callback setup (enhanced)
   React.useEffect(() => {
     import('../lib/client/cookies').then(({setRefetchCallback}) => {
       setRefetchCallback((newPrefs) => {
-        //console.log('Debounced refetch with new preferences:', newPrefs);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[CommandersPage] Refetch triggered with preferences:', newPrefs);
+        }
+        
         debouncedRefetch({
           timePeriod: newPrefs.timePeriod || 'ONE_MONTH',
           sortBy: newPrefs.sortBy || 'CONVERSION',
@@ -492,49 +525,94 @@ export const CommandersPage: EntryPointComponent<
     };
   }, [debouncedRefetch]);
 
-  // Smart hydration refetch - only refetch if preferences differ from URL params
-  const hasTriggeredHydrationRefetch = React.useRef(false);
+  // Enhanced preference validation and error recovery
+  const validateAndCorrectPreferences = React.useCallback(() => {
+    if (!commanderPrefs) return false;
 
+    const validTimePeriods = ['ONE_MONTH', 'THREE_MONTHS', 'SIX_MONTHS', 'ONE_YEAR', 'ALL_TIME', 'POST_BAN'];
+    const validSortBy = ['CONVERSION', 'POPULARITY', 'TOP_CUTS'];
+    const validDisplay = ['card', 'table'];
+    const validStatsDisplay = ['topCuts', 'count'];
+
+    const corrections: Array<{key: string, current: any, corrected: any}> = [];
+
+    // Check each preference field
+    if (!validTimePeriods.includes(commanderPrefs.timePeriod)) {
+      corrections.push({
+        key: 'timePeriod',
+        current: commanderPrefs.timePeriod,
+        corrected: 'ONE_MONTH',
+      });
+    }
+
+    if (!validSortBy.includes(commanderPrefs.sortBy)) {
+      corrections.push({
+        key: 'sortBy',
+        current: commanderPrefs.sortBy,
+        corrected: 'CONVERSION',
+      });
+    }
+
+    if (typeof commanderPrefs.minEntries !== 'number' || commanderPrefs.minEntries < 0) {
+      corrections.push({
+        key: 'minEntries',
+        current: commanderPrefs.minEntries,
+        corrected: 0,
+      });
+    }
+
+    if (typeof commanderPrefs.minTournamentSize !== 'number' || commanderPrefs.minTournamentSize < 0) {
+      corrections.push({
+        key: 'minTournamentSize',
+        current: commanderPrefs.minTournamentSize,
+        corrected: 0,
+      });
+    }
+
+    if (commanderPrefs.display && !validDisplay.includes(commanderPrefs.display)) {
+      corrections.push({
+        key: 'display',
+        current: commanderPrefs.display,
+        corrected: 'card',
+      });
+    }
+
+    if (commanderPrefs.statsDisplay && !validStatsDisplay.includes(commanderPrefs.statsDisplay)) {
+      corrections.push({
+        key: 'statsDisplay',
+        current: commanderPrefs.statsDisplay,
+        corrected: 'topCuts',
+      });
+    }
+
+    // Apply corrections if needed
+    if (corrections.length > 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CommandersPage] Correcting invalid preferences:', corrections);
+      }
+      
+      corrections.forEach(({key, corrected}) => {
+        updatePreference(key as any, corrected);
+      });
+
+      return true; // Indicate corrections were made
+    }
+
+    return false; // No corrections needed
+  }, [commanderPrefs, updatePreference]);
+
+  // Run validation after hydration
   React.useEffect(() => {
-    if (isHydrated && !hasTriggeredHydrationRefetch.current && commanderPrefs) {
-      hasTriggeredHydrationRefetch.current = true;
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlPrefs = {
-        timePeriod: urlParams.get('timePeriod') || 'ONE_MONTH',
-        sortBy: urlParams.get('sortBy') || 'CONVERSION',
-        minEntries: Number(urlParams.get('minEntries') || '0'),
-        minTournamentSize: Number(urlParams.get('minSize') || '0'),
-        colorId: urlParams.get('colorId') || '',
-      };
-
-      const currentPrefs = {
-        timePeriod: commanderPrefs.timePeriod || 'ONE_MONTH',
-        sortBy: commanderPrefs.sortBy || 'CONVERSION',
-        minEntries: commanderPrefs.minEntries || 0,
-        minTournamentSize: commanderPrefs.minTournamentSize || 0,
-        colorId: commanderPrefs.colorId || '',
-      };
-
-      const needsRefetch =
-        currentPrefs.timePeriod !== urlPrefs.timePeriod ||
-        currentPrefs.sortBy !== urlPrefs.sortBy ||
-        currentPrefs.minEntries !== urlPrefs.minEntries ||
-        currentPrefs.minTournamentSize !== urlPrefs.minTournamentSize ||
-        currentPrefs.colorId !== urlPrefs.colorId;
-
-      if (needsRefetch) {
-        //console.log('Preferences differ from URL params, triggering refetch:', currentPrefs);
-        startTransition(() => {
-          refetch(currentPrefs);
-        });
-      } else {
-        //console.log('Preferences match URL params, skipping refetch');
+    if (isHydrated && hydrationState !== 'pending') {
+      const hadCorrections = validateAndCorrectPreferences();
+      
+      if (hadCorrections && process.env.NODE_ENV === 'development') {
+        console.log('[CommandersPage] Preferences were corrected after hydration');
       }
     }
-  }, [isHydrated, commanderPrefs, refetch]);
+  }, [isHydrated, hydrationState, validateAndCorrectPreferences]);
 
-  // Memoize expensive calculations
+  // Your existing memoized calculations (unchanged)
   const commanderNodes = React.useMemo(
     () => data.commanders.edges.map(({node}) => node),
     [data.commanders.edges],
@@ -556,38 +634,68 @@ export const CommandersPage: EntryPointComponent<
     };
   }, [commanderPrefs?.display, commanderPrefs?.statsDisplay]);
 
-  // Render first 6 immediately, rest lazily for better perceived performance
+  // Your existing render logic - ALWAYS call all hooks before any early returns
   const [visibleItems, hiddenItems] = React.useMemo(() => {
     const immediate = commanderNodes.slice(0, 6);
     const lazy = commanderNodes.slice(6);
     return [immediate, lazy];
   }, [commanderNodes]);
 
-  // Critical CSS inlining for skeleton and loading states
-  React.useEffect(() => {
-    // Preload critical styles to prevent FOUC
-    const style = document.createElement('style');
-    style.textContent = `
-      .animate-pulse {
-        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: .5; }
-      }
-    `;
-    document.head.appendChild(style);
+  // Enhanced loading states that respect your existing patterns
+  if (!isHydrated) {
+    return (
+      <CommandersPageShell
+        preferences={commanderPrefs}
+        updatePreference={updatePreference}
+      >
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-pulse text-white">Loading preferences...</div>
+        </div>
+      </CommandersPageShell>
+    );
+  }
 
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
+  // Enhanced error state with your reset pattern
+  if (hydrationState === 'error') {
+    return (
+      <CommandersPageShell
+        preferences={commanderPrefs}
+        updatePreference={updatePreference}
+      >
+        <div className="flex flex-col items-center justify-center py-16 text-white">
+          <div className="mb-4">Failed to load preferences</div>
+          <button
+            onClick={() => {
+              clearAllPreferences();
+              window.location.reload();
+            }}
+            className="rounded bg-blue-600 px-4 py-2 hover:bg-blue-700"
+          >
+            Reset and Reload
+          </button>
+        </div>
+      </CommandersPageShell>
+    );
+  }
 
   return (
     <CommandersPageShell
       preferences={commanderPrefs}
       updatePreference={updatePreference}
     >
+      {/* Development hydration status indicator */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 rounded bg-gray-800 p-2 text-sm text-white">
+          Hydration: {hydrationState} | Preferences loaded: {isHydrated ? 'Yes' : 'No'}
+          {hydrationState === 'refetched' && (
+            <span className="ml-2 text-yellow-400">• Smart refetch applied</span>
+          )}
+          {hydrationState === 'matched' && (
+            <span className="ml-2 text-green-400">• No refetch needed</span>
+          )}
+        </div>
+      )}
+
       <div className={displayConfig.className}>
         {displayConfig.display === 'table' && (
           <div className="sticky top-[68px] hidden w-full grid-cols-[130px_minmax(350px,1fr)_100px_100px_100px_100px] items-center gap-x-2 overflow-x-hidden bg-[#514f86] p-4 text-sm text-white lg:grid">

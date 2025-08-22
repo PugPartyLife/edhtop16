@@ -1,3 +1,4 @@
+// lib/client/cookies.ts (enhanced version)
 import {useState, useEffect, useRef, useCallback} from 'react';
 import {updateRelayPreferences} from './relay_client_environment';
 import type {PreferencesMap} from '../shared/preferences-types';
@@ -63,7 +64,7 @@ function setCookie(name: string, value: string, days: number = 365) {
       return;
     }
 
-    const cookieString = `${name}=${encodedValue}`;
+    const cookieString = `${name}=${encodedValue}; path=/; max-age=${days * 24 * 60 * 60}`;
     //console.log('setCookie - Cookie string to set:', cookieString);
 
     // Set the cookie
@@ -95,9 +96,163 @@ function setCookie(name: string, value: string, days: number = 365) {
   }
 }
 
+// Smart hydration comparison helper
+function comparePreferences(
+  serverPrefs: any,
+  clientPrefs: any,
+  ignoredKeys: string[] = ['_lastUpdated', '_version', '_serverHydrationTime', '_clientUpdate', '_migrated']
+) {
+  const changedKeys: string[] = [];
+  
+  // Normalize both preferences (remove undefined values and ignored keys)
+  const normalizePrefs = (prefs: any) => {
+    if (!prefs) return {};
+    const normalized: any = {};
+    Object.keys(prefs).forEach(key => {
+      if (prefs[key] !== undefined && !ignoredKeys.includes(key)) {
+        normalized[key] = prefs[key];
+      }
+    });
+    return normalized;
+  };
+  
+  const normalizedServer = normalizePrefs(serverPrefs);
+  const normalizedClient = normalizePrefs(clientPrefs);
+  
+  const allKeys = new Set([
+    ...Object.keys(normalizedServer),
+    ...Object.keys(normalizedClient),
+  ]);
+  
+  for (const key of allKeys) {
+    const serverValue = normalizedServer[key];
+    const clientValue = normalizedClient[key];
+    
+    if (JSON.stringify(serverValue) !== JSON.stringify(clientValue)) {
+      changedKeys.push(key);
+    }
+  }
+  
+  return {
+    hasChanges: changedKeys.length > 0,
+    changedKeys,
+    serverPrefs: normalizedServer,
+    clientPrefs: normalizedClient,
+  };
+}
+
+// Enhanced smart hydration hook
+export function useSmartHydration<K extends keyof PreferencesMap>(
+  key: K,
+  preferences: PreferencesMap[K],
+  refetchFn?: (prefs: any) => void,
+  options: {
+    onHydrationMismatch?: (diff: any) => void;
+    onHydrationComplete?: (result: 'matched' | 'refetched' | 'error') => void;
+    debugMode?: boolean;
+  } = {}
+) {
+  const [hydrationState, setHydrationState] = useState<
+    'pending' | 'matched' | 'refetched' | 'error'
+  >('pending');
+  
+  const hasTriggeredHydration = useRef(false);
+  
+  const {
+    onHydrationMismatch,
+    onHydrationComplete,
+    debugMode = process.env.NODE_ENV === 'development',
+  } = options;
+  
+  const logDebug = useCallback(
+    (message: string, data?: any) => {
+      if (debugMode) {
+        console.log(`[SmartHydration] ${message}`, data);
+      }
+    },
+    [debugMode]
+  );
+  
+  useEffect(() => {
+    if (hasTriggeredHydration.current || !preferences) return;
+    
+    hasTriggeredHydration.current = true;
+    
+    try {
+      // Get server preferences from injected script
+      const serverPreferences = (window as any).__SERVER_PREFERENCES__?.[key];
+      
+      // Get current client preferences from cookies
+      const cookieValue = getCookie('sitePreferences');
+      let clientPreferences = null;
+      
+      if (cookieValue) {
+        try {
+          const allClientPrefs = JSON.parse(decodeURIComponent(cookieValue));
+          clientPreferences = allClientPrefs[key];
+        } catch (e) {
+          console.error('Error parsing client cookie:', e);
+        }
+      }
+      
+      logDebug('Starting smart hydration', {
+        key,
+        serverPreferences,
+        clientPreferences,
+        currentPreferences: preferences,
+      });
+      
+      // Compare server and client preferences
+      const diff = comparePreferences(serverPreferences, clientPreferences);
+      
+      if (!diff.hasChanges) {
+        logDebug('Preferences match, no refetch needed');
+        setHydrationState('matched');
+        onHydrationComplete?.('matched');
+        return;
+      }
+      
+      logDebug('Preferences differ, triggering refetch', {
+        changedKeys: diff.changedKeys,
+        diff,
+      });
+      
+      // Call mismatch handler if provided
+      onHydrationMismatch?.(diff);
+      
+      // Use the refetch function if provided, otherwise use the global callback
+      if (refetchFn) {
+        refetchFn(clientPreferences);
+      } else if (refetchCallback) {
+        refetchCallback(clientPreferences);
+      }
+      
+      setHydrationState('refetched');
+      onHydrationComplete?.('refetched');
+      
+    } catch (error) {
+      console.error('[SmartHydration] Error during hydration:', error);
+      setHydrationState('error');
+      onHydrationComplete?.('error');
+    }
+  }, [key, preferences, refetchFn, onHydrationMismatch, onHydrationComplete, logDebug]);
+  
+  return {
+    hydrationState,
+    isHydrated: hydrationState !== 'pending',
+    hasHydrationError: hydrationState === 'error',
+  };
+}
+
+// Enhanced version of your existing usePreferences hook
 export function usePreferences<K extends keyof PreferencesMap>(
   key: K,
   defaultPrefs: PreferencesMap[K],
+  options: {
+    enableSmartHydration?: boolean;
+    onHydrationMismatch?: (diff: any) => void;
+    onHydrationComplete?: (result: 'matched' | 'refetched' | 'error') => void;
+  } = {},
 ): {
   preferences: PreferencesMap[K];
   updatePreference: <P extends keyof NonNullable<PreferencesMap[K]>>(
@@ -105,6 +260,7 @@ export function usePreferences<K extends keyof PreferencesMap>(
     value: NonNullable<PreferencesMap[K]>[P],
   ) => void;
   isHydrated: boolean;
+  hydrationState: 'pending' | 'matched' | 'refetched' | 'error';
 } {
   // Start with defaults to match server-side rendering
   const [preferences, setPreferences] =
@@ -120,6 +276,17 @@ export function usePreferences<K extends keyof PreferencesMap>(
   // Update refs when values change (but don't retrigger the effect)
   keyRef.current = key;
   defaultPrefsRef.current = defaultPrefs;
+
+  // Smart hydration integration
+  const { hydrationState } = useSmartHydration(
+    key,
+    preferences,
+    undefined, // Let it use the global refetchCallback
+    {
+      onHydrationMismatch: options.onHydrationMismatch,
+      onHydrationComplete: options.onHydrationComplete,
+    }
+  );
 
   useEffect(() => {
     const currentKey = keyRef.current;
@@ -228,7 +395,14 @@ export function usePreferences<K extends keyof PreferencesMap>(
           }
         }
 
-        allPrefs[currentKey] = newPrefs;
+        // Add client-side metadata
+        const enhancedPrefs = {
+          ...newPrefs,
+          _lastUpdated: Date.now(),
+          _clientUpdate: true,
+        };
+
+        allPrefs[currentKey] = enhancedPrefs;
         //console.log('updatePreference - All preferences to save:', allPrefs);
 
         const jsonToSave = JSON.stringify(allPrefs);
@@ -236,7 +410,7 @@ export function usePreferences<K extends keyof PreferencesMap>(
         //console.log('updatePreference - JSON length:', jsonToSave.length);
 
         setCookie('sitePreferences', jsonToSave);
-        updateRelayPreferences({[currentKey]: newPrefs});
+        updateRelayPreferences({[currentKey]: enhancedPrefs});
 
         if (refetchTimeoutRef.current) {
           clearTimeout(refetchTimeoutRef.current);
@@ -245,18 +419,43 @@ export function usePreferences<K extends keyof PreferencesMap>(
 
         refetchTimeoutRef.current = setTimeout(() => {
           if (refetchCallback) {
-            refetchCallback(newPrefs);
+            refetchCallback(enhancedPrefs);
           }
           refetchTimeoutRef.current = null;
         }, 250);
 
-        return newPrefs;
+        return enhancedPrefs;
       });
     },
     [], // Empty dependency array since we use refs
   );
 
-  return {preferences, updatePreference, isHydrated};
+  return {
+    preferences, 
+    updatePreference, 
+    isHydrated,
+    hydrationState
+  };
+}
+
+// Helper function to clear all preferences (useful for debugging/reset)
+export function clearAllPreferences() {
+  try {
+    document.cookie = 'sitePreferences=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    
+    if (process.env.NODE_ENV === 'development') {
+      // Also clear localStorage fallbacks
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('cookie_')) {
+          localStorage.removeItem(key);
+        }
+      });
+    }
+    
+    console.log('All preferences cleared');
+  } catch (error) {
+    console.error('Error clearing preferences:', error);
+  }
 }
 
 // Re-export types for convenience
@@ -264,7 +463,7 @@ export type {PreferencesMap} from '../shared/preferences-types';
 export {DEFAULT_PREFERENCES} from '../shared/preferences-types';
 
 // Usage examples:
-// const {preferences, updatePreference} = usePreferences('commanders', DEFAULT_PREFERENCES.commanders);
+// const {preferences, updatePreference, hydrationState} = usePreferences('commanders', DEFAULT_PREFERENCES.commanders);
 // const {preferences, updatePreference} = usePreferences('entry', DEFAULT_PREFERENCES.entry);
 // const {preferences, updatePreference} = usePreferences('tournament', DEFAULT_PREFERENCES.tournament);
 // const {preferences, updatePreference} = usePreferences('tournaments', DEFAULT_PREFERENCES.tournaments);

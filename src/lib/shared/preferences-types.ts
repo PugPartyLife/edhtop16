@@ -65,3 +65,42 @@ export const DEFAULT_PREFERENCES: PreferencesMap = {
     minSize: 0,
   },
 };
+
+export interface HydrationMetadata {
+  _serverHydrationTime?: number;
+  _lastUpdated?: number;
+  _clientUpdate?: boolean;
+  _version?: number;
+  _migrated?: number;
+  _globalVersion?: number;
+  _lastServerRender?: number;
+}
+
+// Enhanced preference types that include metadata
+export type EnhancedPreferencesMap = PreferencesMap & HydrationMetadata;
+
+// Helper type for individual preference sections with metadata
+export type EnhancedPreference<T> = T & HydrationMetadata;
+
+// Type guards for checking if preferences have hydration metadata
+export function hasHydrationMetadata(prefs: any): prefs is HydrationMetadata {
+  return prefs && typeof prefs === 'object' && 
+    (prefs._serverHydrationTime !== undefined || 
+     prefs._version !== undefined ||
+     prefs._lastUpdated !== undefined);
+}
+
+// Helper to safely extract hydration info from any preference object
+export function getHydrationInfo(prefs: any): {
+  serverTime?: number;
+  version: number;
+  lastUpdated?: number;
+  hasClientUpdate?: boolean;
+} {
+  return {
+    serverTime: prefs?._serverHydrationTime,
+    version: prefs?._version || 1,
+    lastUpdated: prefs?._lastUpdated,
+    hasClientUpdate: prefs?._clientUpdate === true,
+  };
+}
