@@ -407,7 +407,7 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
             fetchPolicy: 'store-and-network'
           });
           // Reset refetching state after a delay
-          setTimeout(() => setIsRefetching(false), 500);
+          setTimeout(() => setIsRefetching(false), 200);
         });
       }, 150);
       
