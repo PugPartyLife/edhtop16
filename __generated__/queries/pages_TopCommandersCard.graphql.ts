@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<35895e93eee6126063dd1549ee5a8f96>>
+ * @generated SignedSource<<31b49942d37a158dcce361b4aab32473>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,9 +13,11 @@ import { FragmentRefs } from "relay-runtime";
 export type pages_TopCommandersCard$data = {
   readonly breakdownUrl: string;
   readonly cards: ReadonlyArray<{
+    readonly id: string;
     readonly imageUrls: ReadonlyArray<string>;
   }>;
   readonly colorId: string;
+  readonly id: string;
   readonly name: string;
   readonly stats: {
     readonly conversionRate: number;
@@ -30,7 +32,15 @@ export type pages_TopCommandersCard$key = {
   readonly " $fragmentSpreads": FragmentRefs<"pages_TopCommandersCard">;
 };
 
-const node: ReaderFragment = {
+const node: ReaderFragment = (function(){
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+};
+return {
   "argumentDefinitions": [
     {
       "kind": "RootArgument",
@@ -45,6 +55,7 @@ const node: ReaderFragment = {
   "metadata": null,
   "name": "pages_TopCommandersCard",
   "selections": [
+    (v0/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -130,6 +141,7 @@ const node: ReaderFragment = {
       "name": "cards",
       "plural": true,
       "selections": [
+        (v0/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -144,7 +156,8 @@ const node: ReaderFragment = {
   "type": "Commander",
   "abstractKey": null
 };
+})();
 
-(node as any).hash = "b689ba146c56ee09971ba19ce0438834";
+(node as any).hash = "c8c6b0b223a5ad1b7de144d59b13e9e3";
 
 export default node;

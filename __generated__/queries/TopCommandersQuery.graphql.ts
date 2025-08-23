@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<03fbf598441669551608d9cf3794ebcc>>
- * @relayHash 5ff9379fd35615befef7fb22ec8f0e00
+ * @generated SignedSource<<c838d2e52681c0f81b56f86e81892c2e>>
+ * @relayHash 264dc8343c8211ef44486a70e486d732
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 5ff9379fd35615befef7fb22ec8f0e00
+// @relayRequestID 264dc8343c8211ef44486a70e486d732
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
@@ -254,14 +254,14 @@ return {
                     "name": "cards",
                     "plural": true,
                     "selections": [
+                      (v3/*: any*/),
                       {
                         "alias": null,
                         "args": null,
                         "kind": "ScalarField",
                         "name": "imageUrls",
                         "storageKey": null
-                      },
-                      (v3/*: any*/)
+                      }
                     ],
                     "storageKey": null
                   },
@@ -331,7 +331,7 @@ return {
     ]
   },
   "params": {
-    "id": "5ff9379fd35615befef7fb22ec8f0e00",
+    "id": "264dc8343c8211ef44486a70e486d732",
     "metadata": {},
     "name": "TopCommandersQuery",
     "operationKind": "query",
@@ -340,6 +340,6 @@ return {
 };
 })();
 
-(node as any).hash = "b5a6c24d9b40c399fa950a403034faa7";
+(node as any).hash = "9e8411ed1ca2288e63bdbb738fc4648b";
 
 export default node;

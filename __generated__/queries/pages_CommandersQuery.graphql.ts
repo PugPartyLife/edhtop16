@@ -1,6 +1,6 @@
 /**
- * @generated SignedSource<<ba5a486e1c5a1e9c65e3922688066ce4>>
- * @relayHash 14745cc7afd103bd6a5ec872679047e4
+ * @generated SignedSource<<3c91773a451196350ccbf4f923c38cec>>
+ * @relayHash b5e413733e9b7b22f15b9170c739bcd6
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// @relayRequestID 14745cc7afd103bd6a5ec872679047e4
+// @relayRequestID b5e413733e9b7b22f15b9170c739bcd6
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
@@ -236,14 +236,14 @@ return {
                     "name": "cards",
                     "plural": true,
                     "selections": [
+                      (v7/*: any*/),
                       {
                         "alias": null,
                         "args": null,
                         "kind": "ScalarField",
                         "name": "imageUrls",
                         "storageKey": null
-                      },
-                      (v7/*: any*/)
+                      }
                     ],
                     "storageKey": null
                   },
@@ -313,7 +313,7 @@ return {
     ]
   },
   "params": {
-    "id": "14745cc7afd103bd6a5ec872679047e4",
+    "id": "b5e413733e9b7b22f15b9170c739bcd6",
     "metadata": {},
     "name": "pages_CommandersQuery",
     "operationKind": "query",

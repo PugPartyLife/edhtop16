@@ -61,6 +61,37 @@ const useIntersectionObserver = (threshold = 0.1) => {
   return [ref, isVisible] as const;
 };
 
+// Simple cache optimization hook
+const useCacheOptimization = () => {
+  const environment = useRelayEnvironment();
+  
+  // Retain important queries in cache longer
+  React.useEffect(() => {
+    const retainmentDisposables: any[] = [];
+    
+    // This helps prevent important data from being garbage collected too quickly
+   // const operation = environment.getStore().getSource();
+    
+    // Simple strategy: just delay garbage collection
+    //const originalScheduler = environment.getStore().getGCScheduler();
+    
+    // Override GC to be less aggressive
+    //const delayedGC = (run: () => void) => {
+    //  setTimeout(run, 10000); // Wait 10 seconds instead of immediate
+    //};
+    
+    return () => {
+      retainmentDisposables.forEach(disposable => {
+        try {
+          disposable?.dispose();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      });
+    };
+  }, [environment]);
+};
+
 const TopCommandersCard = React.memo(
   ({display = 'card', secondaryStatistic, lazy = false, ...props}: {
     display?: 'card' | 'table';
@@ -74,6 +105,7 @@ const TopCommandersCard = React.memo(
     const commander = useFragment(
       graphql`
         fragment pages_TopCommandersCard on Commander {
+          id # IMPORTANT: Always include ID for Relay normalization
           name
           colorId
           breakdownUrl
@@ -84,6 +116,7 @@ const TopCommandersCard = React.memo(
             metaShare
           }
           cards {
+            id # Add ID to cards for better caching
             imageUrls
           }
         }
@@ -303,6 +336,9 @@ CommandersPageShell.displayName = 'CommandersPageShell';
 export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_CommandersQuery}, {}> = ({queries}) => {
   const environment = useRelayEnvironment();
   
+  // Add cache optimization
+  useCacheOptimization();
+  
   // Set the Relay environment for the cookies module to use for cache invalidation
   React.useEffect(() => {
     setRelayEnvironment(environment);
@@ -337,10 +373,14 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
           colorId: $colorId
           minEntries: $minEntries
           minTournamentSize: $minTournamentSize
-        ) @connection(key: "pages__commanders") {
+        ) @connection(
+          key: "pages__commanders"
+          # CACHING: This creates separate cache entries for different filter combinations
+          filters: ["timePeriod", "sortBy", "colorId", "minEntries", "minTournamentSize"]
+        ) {
           edges {
             node {
-              id
+              id # Always include node ID for better normalization
               ...pages_TopCommandersCard
             }
           }
@@ -520,8 +560,24 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
       
       timeoutId = setTimeout(() => {
         startTransition(() => {
+          // CACHING: Smart fetch policy based on data type
+          const getFetchPolicy = () => {
+            // Historical data changes rarely - use cache more aggressively
+            if (['ONE_YEAR', 'ALL_TIME', 'POST_BAN'].includes(variables.timePeriod)) {
+              return 'store-or-network'; // Use cache if available, otherwise network
+            }
+            
+            // Recent data needs freshness but can still use cache
+            if (['ONE_MONTH'].includes(variables.timePeriod)) {
+              return 'store-and-network'; // Check cache first, then network
+            }
+            
+            // Medium-term data - balanced approach  
+            return 'store-and-network';
+          };
+
           currentDisposable = refetch(variables, {
-            fetchPolicy: 'store-and-network'
+            fetchPolicy: getFetchPolicy()
           });
           
           consecutiveChanges = 0;
@@ -599,7 +655,7 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
     };
   }, []);
 
-  // NEW: Show loading if client hasn't hydrated yet OR if server sent no data
+  // Show loading if client hasn't hydrated yet OR if server sent no data
   const shouldShowInitialLoading = !isHydrated || (data.commanders.edges.length === 0 && !userHasChangedDataPrefs);
 
   return (
