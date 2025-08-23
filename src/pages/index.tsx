@@ -308,6 +308,7 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
     setRelayEnvironment(environment);
   }, [environment]);
 
+  // Always execute the GraphQL hooks - they need to run regardless
   const query = usePreloadedQuery(
     graphql`
       query pages_CommandersQuery(
@@ -322,8 +323,6 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
     `,
     queries.commandersQueryRef,
   );
-
-  const {preferences: commanderPrefs, updatePreference, isHydrated} = usePreferences('commanders', DEFAULT_PREFERENCES.commanders!);
 
   const {data, loadNext, isLoadingNext, hasNext, refetch} = usePaginationFragment<TopCommandersQuery, pages_topCommanders$key>(
     graphql`
@@ -351,10 +350,16 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
     query,
   );
 
+  const {preferences: commanderPrefs, updatePreference, isHydrated} = usePreferences('commanders', DEFAULT_PREFERENCES.commanders!);
+
   // Track if user has made any DATA preference changes to prevent blink
   const [userHasChangedDataPrefs, setUserHasChangedDataPrefs] = React.useState(false);
   const [isRefetching, setIsRefetching] = React.useState(false);
   const initialPrefsRef = React.useRef<any>(null);
+  const [lastDataSignature, setLastDataSignature] = React.useState('');
+  const refetchStartTimeRef = React.useRef<number>(0);
+  const isWaitingForNewData = React.useRef(false);
+  const contentContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Store initial preferences on first render
   React.useEffect(() => {
@@ -362,6 +367,84 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
       initialPrefsRef.current = commanderPrefs;
     }
   }, [isHydrated, commanderPrefs]);
+
+  // Watch for actual visual rendering completion - check what's actually in the DOM
+  React.useLayoutEffect(() => {
+    if (data && data.commanders && isWaitingForNewData.current) {
+      // Create a signature of what SHOULD be rendered (new data)
+      const expectedSignature = JSON.stringify({
+        edgeCount: data.commanders.edges.length,
+        firstNodeId: data.commanders.edges[0]?.node?.id || '',
+        lastNodeId: data.commanders.edges[data.commanders.edges.length - 1]?.node?.id || ''
+      });
+      
+      // Only proceed if we have new data to show
+      if (expectedSignature !== lastDataSignature) {
+        setLastDataSignature(expectedSignature);
+        
+        // Simplified approach: check if DOM has reasonable content
+        const checkIfContentReady = () => {
+          if (!contentContainerRef.current) return false;
+          
+          // Look for any non-skeleton commander cards
+          const nonSkeletonCards = contentContainerRef.current.querySelectorAll('[data-commander-card="true"]:not(.animate-pulse)');
+          const skeletonCards = contentContainerRef.current.querySelectorAll('[data-commander-card="true"].animate-pulse');
+          
+          // Content is ready if we have some non-skeleton cards and no skeleton cards
+          // OR if we have the expected number of total cards
+          const hasNonSkeletonContent = nonSkeletonCards.length > 0 && skeletonCards.length === 0;
+          const hasExpectedCardCount = (nonSkeletonCards.length + skeletonCards.length) >= data.commanders.edges.length;
+          
+          return hasNonSkeletonContent || hasExpectedCardCount;
+        };
+        
+        let attemptCount = 0;
+        const maxAttempts = 25; // Max 500ms of checking (25 * 20ms)
+        
+        const hideSpinnerWhenReady = () => {
+          attemptCount++;
+          
+          if (checkIfContentReady() || attemptCount >= maxAttempts) {
+            // Content is ready OR we've waited long enough - hide spinner
+            isWaitingForNewData.current = false;
+            setIsRefetching(false);
+          } else {
+            // Keep checking, but not forever
+            setTimeout(hideSpinnerWhenReady, 20);
+          }
+        };
+        
+        const elapsedTime = Date.now() - refetchStartTimeRef.current;
+        const isVeryFastResponse = elapsedTime < 80;
+        
+        if (isVeryFastResponse) {
+          // For fast responses, wait a bit then start checking DOM
+          setTimeout(() => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(hideSpinnerWhenReady);
+            });
+          }, 60); // Give server/hydration time
+        } else {
+          // For normal responses, check DOM immediately after next frame
+          requestAnimationFrame(() => {
+            requestAnimationFrame(hideSpinnerWhenReady);
+          });
+        }
+      }
+    }
+  }, [data, lastDataSignature]);
+
+  // Initialize data signature on first load
+  React.useEffect(() => {
+    if (data && data.commanders && !lastDataSignature) {
+      const initialSignature = JSON.stringify({
+        edgeCount: data.commanders.edges.length,
+        firstNodeId: data.commanders.edges[0]?.node?.id || '',
+        lastNodeId: data.commanders.edges[data.commanders.edges.length - 1]?.node?.id || ''
+      });
+      setLastDataSignature(initialSignature);
+    }
+  }, [data, lastDataSignature]);
 
   // Check if DATA preferences have changed from initial (exclude UI-only changes)
   React.useEffect(() => {
@@ -391,6 +474,8 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
   const debouncedRefetch = React.useMemo(() => {
     let timeoutId: NodeJS.Timeout;
     let currentDisposable: any;
+    let consecutiveChanges = 0;
+    let lastChangeTime = 0;
     
     return (variables: any) => {
       clearTimeout(timeoutId);
@@ -400,21 +485,57 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
       }
       
       setIsRefetching(true);
+      refetchStartTimeRef.current = Date.now(); // Record when spinner started
+      isWaitingForNewData.current = true; // Flag that we're waiting for new data
+      
+      const now = Date.now();
+      const timeSinceLastChange = now - lastChangeTime;
+      
+      // Reset counter if user paused for more than 2 seconds
+      if (timeSinceLastChange > 2000) {
+        consecutiveChanges = 0;
+      } else {
+        consecutiveChanges++;
+      }
+      
+      lastChangeTime = now;
+      
+      // Dynamic timeout calculation
+      const getDynamicTimeout = () => {
+        const hasFilters = variables.colorId || variables.minEntries > 0 || variables.minTournamentSize > 0;
+        const isComplexSort = variables.sortBy === 'CONVERSION';
+        const isLargePeriod = ['ONE_YEAR', 'ALL_TIME'].includes(variables.timePeriod);
+        
+        let baseTimeout = 50; // Reduced from 100ms to 50ms
+        
+        if (isLargePeriod && isComplexSort) baseTimeout = 100; // Reduced from 200ms
+        else if (hasFilters && isComplexSort) baseTimeout = 75; // Reduced from 150ms
+        else if (hasFilters || isComplexSort) baseTimeout = 60; // Reduced from 125ms
+        
+        const progressiveMultiplier = Math.min(1 + (consecutiveChanges * 0.4), 2.5); // Reduced multiplier
+        return Math.min(baseTimeout * progressiveMultiplier, 300); // Reduced max from 500ms
+      };
+      
+      const dynamicTimeout = getDynamicTimeout();
       
       timeoutId = setTimeout(() => {
         startTransition(() => {
           currentDisposable = refetch(variables, {
             fetchPolicy: 'store-and-network'
           });
-          // Reset refetching state after a delay
-          setTimeout(() => setIsRefetching(false), 200);
+          
+          consecutiveChanges = 0;
+          
+          // The spinner will be hidden by useLayoutEffect when data actually changes
+          // No need for arbitrary timeouts here
         });
-      }, 150);
+      }, dynamicTimeout);
       
       return {
         dispose: () => {
           clearTimeout(timeoutId);
           setIsRefetching(false);
+          isWaitingForNewData.current = false; // Reset waiting flag on dispose
           if (currentDisposable && typeof currentDisposable.dispose === 'function') {
             currentDisposable.dispose();
             currentDisposable = undefined;
@@ -478,10 +599,13 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
     };
   }, []);
 
+  // NEW: Show loading if client hasn't hydrated yet OR if server sent no data
+  const shouldShowInitialLoading = !isHydrated || (data.commanders.edges.length === 0 && !userHasChangedDataPrefs);
+
   return (
     <CommandersPageShell preferences={commanderPrefs} updatePreference={updatePreference}>
-      {/* Show loading state ONLY if user has changed DATA prefs and we're refetching */}
-      {userHasChangedDataPrefs && isRefetching ? (
+      {/* Show initial loading state if not hydrated or no server data */}
+      {shouldShowInitialLoading ? (
         <div className="flex items-center justify-center h-96 text-white">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
@@ -489,29 +613,46 @@ export const CommandersPage: EntryPointComponent<{commandersQueryRef: pages_Comm
           </div>
         </div>
       ) : (
-        <div className={displayConfig.className}>
-          {displayConfig.display === 'table' && (
-            <div className="sticky top-[68px] hidden w-full grid-cols-[130px_minmax(350px,1fr)_100px_100px_100px_100px] items-center gap-x-2 overflow-x-hidden bg-[#514f86] p-4 text-sm text-white lg:grid">
-              <div>Color</div>
-              <div>Commander</div>
-              <div>Entries</div>
-              <div>Meta %</div>
-              <div>Top Cuts</div>
-              <div>Cnvr. %</div>
+        <>
+          {/* Show loading state ONLY if user has changed DATA prefs and we're refetching */}
+          {userHasChangedDataPrefs && isRefetching ? (
+            <div className="flex items-center justify-center h-96 text-white">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                <div>Loading commanders...</div>
+              </div>
+            </div>
+          ) : (
+            <div 
+              ref={contentContainerRef}
+              className={displayConfig.className}
+            >
+              {displayConfig.display === 'table' && (
+                <div className="sticky top-[68px] hidden w-full grid-cols-[130px_minmax(350px,1fr)_100px_100px_100px_100px] items-center gap-x-2 overflow-x-hidden bg-[#514f86] p-4 text-sm text-white lg:grid">
+                  <div>Color</div>
+                  <div>Commander</div>
+                  <div>Entries</div>
+                  <div>Meta %</div>
+                  <div>Top Cuts</div>
+                  <div>Cnvr. %</div>
+                </div>
+              )}
+
+              {/* Render all items with lazy loading */}
+              {allItems.map((node) => (
+                <TopCommandersCard
+                  key={node.id}
+                  display={displayConfig.display}
+                  commander={node}
+                  secondaryStatistic={displayConfig.secondaryStatistic}
+                  lazy={true}
+                  data-commander-card="true"
+                  data-commander-id={node.id}
+                />
+              ))}
             </div>
           )}
-
-          {/* Render all items with lazy loading */}
-          {allItems.map((node) => (
-            <TopCommandersCard
-              key={node.id}
-              display={displayConfig.display}
-              commander={node}
-              secondaryStatistic={displayConfig.secondaryStatistic}
-              lazy={true}
-            />
-          ))}
-        </div>
+        </>
       )}
 
       <LoadMoreButton hasNext={hasNext} isLoadingNext={isLoadingNext} loadNext={loadNext} />

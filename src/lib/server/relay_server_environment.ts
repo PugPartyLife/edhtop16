@@ -15,9 +15,26 @@ export function createServerEnvironment(
   persistedQueries?: Record<string, string>,
   request?: Request,
 ) {
-  // Get preferences from request cookies for server-side rendering
-  const preferences = request ? getPreferencesFromRequest(request) : {};
-  //console.log('Server environment using preferences:', preferences);
+  // NEW: Only use cookie preferences if they exist AND are not just defaults
+  let preferences = {};
+  
+  if (request) {
+    const cookiePrefs = getPreferencesFromRequest(request);
+    
+    // Check if the preferences are actually meaningful (not just defaults)
+    const hasNonDefaultPreferences = Object.keys(cookiePrefs).some(key => {
+      const prefs = cookiePrefs[key as keyof PreferencesMap];
+      return prefs && Object.keys(prefs).length > 0;
+    });
+    
+    // Only use preferences if they contain actual user choices
+    if (hasNonDefaultPreferences) {
+      preferences = cookiePrefs;
+    }
+    // Otherwise, leave preferences empty so server renders with no data
+  }
+
+  console.log('Server environment using preferences:', preferences);
 
   const networkFetchFunction: FetchFunction = async (
     requestParams,
@@ -32,7 +49,7 @@ export function createServerEnvironment(
       throw new Error(`Could not find source for query: ${requestParams.id}`);
     }
 
-    // Create context with preferences available
+    // Create context with preferences available (may be empty)
     const contextValue = createContext(request, preferences);
 
     const results = await graphql({
@@ -40,7 +57,7 @@ export function createServerEnvironment(
       source,
       variableValues: {
         ...variables,
-        preferences, // Make preferences available to all queries
+        preferences, // This will be empty for first-time users
       },
       contextValue,
     });

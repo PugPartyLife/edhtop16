@@ -130,70 +130,51 @@ export function usePreferences<K extends keyof PreferencesMap>(
     const currentKey = keyRef.current;
     const currentDefaultPrefs = defaultPrefsRef.current;
 
-    //console.log('usePreferences effect starting - key:', currentKey, 'hasHydrated:', hasHydratedRef.current);
-
     if (hasHydratedRef.current) return;
     hasHydratedRef.current = true;
 
     // Only run on client after hydration
     if (typeof window === 'undefined') {
-      //console.log('usePreferences - running on server, skipping');
       return;
     }
 
-    //console.log('usePreferences - running client hydration for key:', currentKey);
+    console.log('usePreferences - CLIENT HYDRATION for key:', currentKey);
     setIsHydrated(true);
 
-    // Debug: Check what cookies are available
-    //console.log('Client hydration - All cookies available:', document.cookie);
-    //console.log('Client hydration - Location:', window.location.href);
-
-    // Check if server provided preferences for hydration
-    const serverPreferences = (window as any).__SERVER_PREFERENCES__;
-    //console.log('Client hydration - Server preferences from window:', serverPreferences);
-
+    // Read actual user preferences from cookies
     let allPrefs: PreferencesMap = {...DEFAULT_PREFERENCES};
+    const cookieValue = getCookie('sitePreferences');
 
-    if (serverPreferences) {
-      // Use server preferences for initial hydration
-      allPrefs = {
-        ...allPrefs,
-        ...serverPreferences,
-      };
-      //console.log('Using server preferences for hydration:', serverPreferences);
-    } else {
-      // Fallback to reading cookies if no server preferences
-      const cookieValue = getCookie('sitePreferences');
-      //console.log('Hydration - Raw cookie value:', cookieValue);
-
-      if (cookieValue) {
-        try {
-          const parsed = JSON.parse(decodeURIComponent(cookieValue));
-          //console.log('Hydration - Parsed preferences:', parsed);
-          allPrefs = {
-            ...allPrefs,
-            ...parsed,
-          };
-        } catch (error) {
-          console.error('Failed to parse cookie:', error);
-        }
-      } else {
-        //console.log('Client hydration - No sitePreferences cookie found in:', document.cookie);
+    if (cookieValue) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(cookieValue));
+        console.log('Client hydration - Found user preferences:', parsed);
+        allPrefs = {
+          ...allPrefs,
+          ...parsed,
+        };
+      } catch (error) {
+        console.error('Failed to parse cookie:', error);
       }
+    } else {
+      console.log('Client hydration - No existing preferences, using defaults');
     }
 
     const finalPrefs = allPrefs[currentKey] || currentDefaultPrefs;
-    //console.log('Hydration - Final preferences for', currentKey, ':', finalPrefs);
-    //console.log('Hydration - Default preferences:', currentDefaultPrefs);
+    console.log('Client hydration - Setting preferences for', currentKey, ':', finalPrefs);
 
-    // Always update after hydration to sync with server state
+    // Update preferences and trigger initial data fetch
     setPreferences(finalPrefs);
     updateRelayPreferences({[currentKey]: finalPrefs});
 
-    // Small delay to ensure Relay environment is ready
+    // IMPORTANT: Trigger initial refetch with user preferences
+    // This happens after client hydration, so server won't have sent any data
     setTimeout(() => {
-      refetchCallback?.(finalPrefs);
-    }, 100);
+      if (refetchCallback) {
+        console.log('Triggering initial refetch with user preferences');
+        refetchCallback(finalPrefs);
+      }
+    }, 50); // Small delay to ensure Relay is ready
   }, []); // Empty dependency array is now correct since we use refs
 
   const updatePreference = useCallback(
@@ -203,7 +184,7 @@ export function usePreferences<K extends keyof PreferencesMap>(
     ) => {
       const currentKey = keyRef.current;
 
-      //console.log('updatePreference called with:', { prefKey, value, key: currentKey });
+      console.log('updatePreference called with:', { prefKey, value, key: currentKey });
 
       // Only invalidate cache for data-affecting preferences, not UI preferences
       const dataAffectingPrefs = ['timePeriod', 'sortBy', 'minEntries', 'minTournamentSize', 'colorId'];
@@ -242,8 +223,6 @@ export function usePreferences<K extends keyof PreferencesMap>(
       }
 
       setPreferences((prevPrefs) => {
-        //console.log('updatePreference - Previous preferences:', prevPrefs);
-
         const newPrefs = {...(prevPrefs ?? {})} as PreferencesMap[K];
         if (!value && value !== 0) {
           delete (newPrefs as any)[prefKey];
@@ -251,11 +230,8 @@ export function usePreferences<K extends keyof PreferencesMap>(
           (newPrefs as any)[prefKey] = value;
         }
 
-        //console.log('updatePreference - New preferences for', currentKey, ':', newPrefs);
-
         let allPrefs: PreferencesMap = {...DEFAULT_PREFERENCES};
         const cookieValue = getCookie('sitePreferences');
-        //console.log('updatePreference - Current cookie value:', cookieValue);
 
         if (cookieValue) {
           try {
@@ -263,19 +239,13 @@ export function usePreferences<K extends keyof PreferencesMap>(
               ...allPrefs,
               ...JSON.parse(decodeURIComponent(cookieValue)),
             };
-            //console.log('updatePreference - Parsed existing preferences:', allPrefs);
           } catch (error) {
             console.error('Failed to parse existing cookie:', error);
           }
         }
 
         allPrefs[currentKey] = newPrefs;
-        //console.log('updatePreference - All preferences to save:', allPrefs);
-
         const jsonToSave = JSON.stringify(allPrefs);
-        //console.log('updatePreference - JSON to save:', jsonToSave);
-        //console.log('updatePreference - JSON length:', jsonToSave.length);
-
         setCookie('sitePreferences', jsonToSave);
         updateRelayPreferences({[currentKey]: newPrefs});
 
@@ -285,7 +255,6 @@ export function usePreferences<K extends keyof PreferencesMap>(
         }
 
         // Only trigger refetch for data-affecting preferences
-        const dataAffectingPrefs = ['timePeriod', 'sortBy', 'minEntries', 'minTournamentSize', 'colorId'];
         const shouldTriggerRefetch = dataAffectingPrefs.includes(prefKey as string);
 
         if (shouldTriggerRefetch) {
